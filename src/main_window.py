@@ -1,4 +1,3 @@
-# Import necessary libraries
 from PyQt6.QtWidgets import  QMainWindow, QWidget, QVBoxLayout, QLabel, QTabWidget
 from PyQt6.QtCore import pyqtSignal, Qt, QObject
 from database_manager import DatabaseManager
@@ -10,18 +9,14 @@ from login_signup_tab import LoginSignupTab
 class MainWindow(QMainWindow):
     def __init__(self, database_manager: DatabaseManager):
         super().__init__()
-        # Database
         self.database_manager = database_manager
-        # Instance of the AppSignals Class
         self.signals = AppSignals()
-       # Initialize UI
         self.setWindowTitle("Online Library Management System")
-        self.setGeometry(50, 50, 600, 800)
+        self.setGeometry(50, 50, 800, 600)
         # Create main widget and layout
         main_widget = QWidget(self)
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
-        # QLabel for heading
         heading_label = QLabel("Library Management System", self)
         heading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(heading_label)
@@ -38,7 +33,6 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(login_signup_tab, "Login/Sign up")
         self.tab_widget.addTab(librarian_tab, "Librarian")
         self.tab_widget.addTab(customer_tab, "Customer")
-        # Add tab widget to the main layout
         main_layout.addWidget(self.tab_widget)
         # Connects
         self.signals.update_status.connect(self.update_status_label)

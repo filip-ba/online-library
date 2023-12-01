@@ -5,7 +5,6 @@ from database_manager import DatabaseManager
 def main():
     connection_string = "mongodb+srv://admin:admin@cluster0.p8pwbsz.mongodb.net/?retryWrites=true&w=majority"
     database_name = "OnlineLibrary"
-
     database_manager = DatabaseManager(connection_string, database_name)
 
     app = QApplication([])

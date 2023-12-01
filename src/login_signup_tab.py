@@ -16,7 +16,6 @@ class LoginSignupTab(QWidget):
         self.statusBar = statusBar
         self.create_login_signup_ui()   
 		
-    # Function to create UI for login/signup
     def create_login_signup_ui(self):
         self.setObjectName("tab_login_signup")
         login_signup_layout = QVBoxLayout(self)
@@ -81,7 +80,6 @@ class LoginSignupTab(QWidget):
         login_button.clicked.connect(lambda: self.login(username_login.text(), password_login.text(), "Customer" if role_customer_radio.isChecked() else "Librarian"))
         logout_button.clicked.connect(self.logout) 
 
-
     def login(self, username, password, role):
         if GlobalState.current_user:
             QMessageBox.information(self, "Warning", "Another user is already logged in. Please sign out first.")
@@ -102,12 +100,12 @@ class LoginSignupTab(QWidget):
 
     def update_tab_access(self):
         if GlobalState.current_role == "Customer":
-            self.signals.update_tab_widget.emit(2)
-            self.signals.customer_tab_state.emit(True)
-            self.signals.customer_logged_in.emit()
+            self.signals.update_tab_widget.emit(2)      # Sets the current tab to the customer_tab
+            self.signals.customer_tab_state.emit(True)  # Enables the widgets
+            self.signals.customer_logged_in.emit()      # Initiates the logged in customer(Loads all the tables and personal info)
         elif GlobalState.current_role == "Librarian":
-            self.signals.update_tab_widget.emit(1)
-            self.signals.librarian_tab_state.emit(True)
+            self.signals.update_tab_widget.emit(1)      
+            self.signals.librarian_tab_state.emit(True) 
             self.signals.librarian_logged_in.emit()
 
     def logout(self):
@@ -146,5 +144,5 @@ class LoginSignupTab(QWidget):
             }
             customer_collection.insert_one(new_customer)
             QMessageBox.information(self, "Customer registered", "Registration was successful. Waiting for approval.")
-            # Show informational message in the status bar with extra space
-            self.statusBar.showMessage(f"Registration successful. Waiting for librarian approval.", 7000)
+            # Show informational message in the status bar
+            self.statusBar.showMessage(f"Registration successful. Waiting for librarian approval.", 5000)

@@ -1,14 +1,14 @@
 from PyQt6.QtWidgets import (
-      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, 
-      QInputDialog, QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QLineEdit )
+      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QDialog,
+      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
-from bson import ObjectId
 from pathlib import Path
+from datetime import datetime, timedelta , timezone
 import os
 from database_manager import DatabaseManager
+from advanced_search_dialog import AdvancedSearchDialog
 from global_state import GlobalState
-from datetime import datetime, timedelta , timezone
 
 
 class CustomerTab(QWidget):
@@ -25,7 +25,8 @@ class CustomerTab(QWidget):
         self.borrow_button.clicked.connect(self.borrow_book)
         self.return_button.clicked.connect(self.return_book)
         self.refresh_table_button.clicked.connect(self.load_tables)
-
+        self.advanced_search_button.clicked.connect(self.show_advanced_search_dialog)
+        
     def init_customer_tab(self):
         self.load_tables()
 
@@ -335,3 +336,20 @@ class CustomerTab(QWidget):
             self.history_table.setItem(index, 5, QTableWidgetItem(formatted_event_date))
         self.history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
+    def show_advanced_search_dialog(self):
+        dialog = AdvancedSearchDialog()
+        result = dialog.exec()
+
+        if result == QDialog.DialogCode.Accepted:
+            # Retrieve user input from the dialog
+            search_mode = dialog.search_radio.isChecked()
+            author_text = dialog.author_input.text()
+            title_text = dialog.title_input.text()
+            year_text = dialog.year_input.text()
+            print(author_text)
+            self.search_and_sort_catalog(search_mode, author_text, title_text, year_text)
+        else:
+            print("Canceled")
+
+    def search_and_sort_catalog(self, search_mode, author_text, title_text, year_text):
+        pass
