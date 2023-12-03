@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
         self.database_manager = database_manager
         self.signals = AppSignals()
         self.setWindowTitle("Online Library Management System")
-        self.setGeometry(50, 50, 800, 600)
+        self.setGeometry(50, 50, 700, 500)
         # Create main widget and layout
         main_widget = QWidget(self)
         self.setCentralWidget(main_widget)
@@ -23,7 +23,9 @@ class MainWindow(QMainWindow):
         # Status bar to display login status
         self.statusBar = self.statusBar()
         self.status_label = QLabel("Not logged in")
-        self.statusBar.addWidget(self.status_label)
+        self.statusBar.addPermanentWidget(self.status_label)
+        self.status_bar_widget = QLabel("")
+        self.statusBar.addWidget(self.status_bar_widget)
         # Tab Widget for librarian, customer, and login/signup views
         self.tab_widget = QTabWidget(self)
         librarian_tab = LibrarianTab(self.database_manager, self.statusBar, self.signals)
@@ -36,7 +38,11 @@ class MainWindow(QMainWindow):
         main_layout.addWidget(self.tab_widget)
         # Connects
         self.signals.update_status.connect(self.update_status_label)
+        self.signals.update_status_bar_widget.connect(self.update_status_bar_widget)
         self.signals.update_tab_widget.connect(self.update_tab_widget)
+
+    def update_status_bar_widget(self, message):
+        self.status_bar_widget.setText(message)
 
     def update_status_label(self, message):
         self.status_label.setText(message)
@@ -47,6 +53,7 @@ class MainWindow(QMainWindow):
 
 class AppSignals(QObject):
     update_status = pyqtSignal(str)
+    update_status_bar_widget = pyqtSignal(str)
     update_tab_widget = pyqtSignal(int)
     customer_tab_state = pyqtSignal(bool)
     customer_logged_in = pyqtSignal()

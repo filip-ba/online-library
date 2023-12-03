@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 from pathlib import Path
 from datetime import datetime, timedelta , timezone
 import os
+import pymongo
 from database_manager import DatabaseManager
 from advanced_search_dialog import AdvancedSearchDialog
 from global_state import GlobalState
@@ -17,6 +18,7 @@ class CustomerTab(QWidget):
         self.database_manager = database_manager
         self.signals = signals
         self.statusBar = statusBar
+        self.searching = False
         self.create_customer_ui()
         # Signals
         self.signals.customer_tab_state.connect(self.set_tab_state)
@@ -24,9 +26,10 @@ class CustomerTab(QWidget):
         # Connects
         self.borrow_button.clicked.connect(self.borrow_book)
         self.return_button.clicked.connect(self.return_book)
-        self.refresh_table_button.clicked.connect(self.load_tables)
+        self.refresh_catalog_button.clicked.connect(lambda: self.display_book_catalog())
         self.advanced_search_button.clicked.connect(self.show_advanced_search_dialog)
-        
+        self.cancel_search_button.clicked.connect(self.cancel_search)
+
     def init_customer_tab(self):
         self.load_tables()
 
@@ -42,9 +45,12 @@ class CustomerTab(QWidget):
         top_layout = QHBoxLayout()
         self.advanced_search_button = QPushButton("Advanced Search")
         self.advanced_search_button.setEnabled(False)
+        self.cancel_search_button = QPushButton("Cancel Search")
+        self.advanced_search_button.setEnabled(False)
         self.edit_profile_button = QPushButton("Edit Profile")
         self.edit_profile_button.setEnabled(False)
         top_layout.addWidget(self.advanced_search_button)
+        top_layout.addWidget(self.cancel_search_button)
         top_layout.addWidget(self.edit_profile_button)
         # Middle layout for the QTabWidget
         tab_layout = QHBoxLayout()
@@ -85,11 +91,11 @@ class CustomerTab(QWidget):
         self.borrow_button.setEnabled(False)
         self.return_button = QPushButton("Return")
         self.return_button.setEnabled(False)
-        self.refresh_table_button = QPushButton("Refresh Table")
-        self.refresh_table_button.setEnabled(False)
+        self.refresh_catalog_button = QPushButton("Refresh Catalog")
+        self.refresh_catalog_button.setEnabled(False)
         bottom_layout.addWidget(self.borrow_button)
         bottom_layout.addWidget(self.return_button)
-        bottom_layout.addWidget(self.refresh_table_button)
+        bottom_layout.addWidget(self.refresh_catalog_button)
         # Add layouts to the main layout
         layout.addLayout(top_layout)
         layout.addLayout(tab_layout)
@@ -102,18 +108,19 @@ class CustomerTab(QWidget):
         self.advanced_search_button.setEnabled(state)
         self.borrow_button.setEnabled(state)
         self.return_button.setEnabled(state)
-        self.refresh_table_button.setEnabled(state)
+        self.refresh_catalog_button.setEnabled(state)
         self.tab_widget.setEnabled(state)
         if state == False: 
             self.catalog_table.setRowCount(0)    # Clearing the content of the book catalog
             self.borrowed_books_table.setRowCount(0) 
             self.tab_widget.setCurrentIndex(0)    # Displaying the catalog tab
 
-    def display_book_catalog(self):
-        books_collection = self.database_manager.db["books"]
-        all_books = books_collection.find()
+    def display_book_catalog(self, cursor=None):
+        if cursor is None:
+            books_collection = self.database_manager.db["books"]
+            cursor = books_collection.find()
         self.catalog_table.setRowCount(0)
-        for index, book in enumerate(all_books):
+        for index, book in enumerate(cursor):
             self.catalog_table.insertRow(index)
             self.catalog_table.setItem(index, 0, QTableWidgetItem(book["title"]))
             self.catalog_table.setItem(index, 1, QTableWidgetItem(book["author"]))
@@ -203,7 +210,7 @@ class CustomerTab(QWidget):
         update_query = {"$inc": {"items": -1}}
         books_collection.update_one(book_query, update_query)
         # Inform the user that the book has been borrowed
-        self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 4000)
+        self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 7000)
         # Refresh the book catalog
         self.display_book_catalog()
         # Add the book to the user's history
@@ -290,7 +297,7 @@ class CustomerTab(QWidget):
         return_query = {"username": GlobalState.current_user, "title": title, "author": author}
         borrowed_books_collection.delete_one(return_query)
         # Inform the user that the book has been returned
-        self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 4000)
+        self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 5000)
         # Refresh the borrowed_books table
         self.display_borrowed_books()
 
@@ -339,17 +346,52 @@ class CustomerTab(QWidget):
     def show_advanced_search_dialog(self):
         dialog = AdvancedSearchDialog()
         result = dialog.exec()
-
         if result == QDialog.DialogCode.Accepted:
             # Retrieve user input from the dialog
             search_mode = dialog.search_radio.isChecked()
             author_text = dialog.author_input.text()
             title_text = dialog.title_input.text()
             year_text = dialog.year_input.text()
-            print(author_text)
             self.search_and_sort_catalog(search_mode, author_text, title_text, year_text)
-        else:
-            print("Canceled")
 
     def search_and_sort_catalog(self, search_mode, author_text, title_text, year_text):
-        pass
+        books_collection = self.database_manager.db["books"]
+        if search_mode:
+            query = {}
+            author_formatted = ""
+            title_formatted = ""
+            year_formatted = ""
+            if len(author_text) >= 3:
+                query["author"] = {"$regex": author_text, "$options": "i"}
+                author_formatted =(f"  Author: '{author_text}'")
+            if len(title_text) >= 3:
+                query["title"] = {"$regex": title_text, "$options": "i"}
+                title_formatted =(f"  Title: '{title_text}'")
+            if len(year_text) >= 3:
+                query["year"] = {"$eq": int(year_text)}
+                year_formatted =(f"  Year: '{year_text}'")
+            if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
+                self.signals.update_status_bar_widget.emit(f"Showing searches for: {author_formatted}{title_formatted}{year_formatted}")
+                self.searching = True
+                cursor = books_collection.find(query)
+                self.display_book_catalog(cursor)
+            else:
+                self.statusBar.showMessage("The minimum character length required for searching/sorting is 3.", 5000)
+                return
+        else:
+            sort_criteria = []
+            if len(author_text) >= 3:
+                sort_criteria.append(("author", pymongo.ASCENDING))
+            if len(title_text) >= 3:
+                sort_criteria.append(("title", pymongo.ASCENDING))
+            if len(year_text) >= 3:
+                sort_criteria.append(("year", pymongo.ASCENDING))
+            self.searching = True
+            cursor = books_collection.find().sort(sort_criteria)
+            self.display_book_catalog(cursor)
+
+    def cancel_search(self):
+        if self.searching == True:
+            self.searching = False
+            self.signals.update_status_bar_widget.emit("")
+            self.display_book_catalog()
