@@ -28,10 +28,9 @@ class CustomerTab(QWidget):
         self.borrow_button.clicked.connect(self.borrow_book)
         self.return_button.clicked.connect(self.return_book)
         self.refresh_catalog_button.clicked.connect(lambda: self.display_book_catalog())
-        self.advanced_search_button.clicked.connect(self.show_advanced_search_dialog)
+        self.advanced_search_button.clicked.connect(self.show_search_dialog)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
         self.sort_books_button.clicked.connect(self.show_sorting_dialog)
-        self.edit_profile_button.clicked.connect(self.edit_profile)
         # QTimer for updating every 10 seconds
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.update_borrowed_books)
@@ -74,7 +73,6 @@ class CustomerTab(QWidget):
         self.catalog_table = QTableWidget()
         self.catalog_table.setColumnCount(6) 
         self.catalog_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Items", "Book Cover"])
-        # Add code to populate catalog_table with data from MongoDB
         catalog_layout.addWidget(self.catalog_table)
         # Layout for the Borrowed Books tab
         borrowed_books_layout = QVBoxLayout(borrowed_books_tab)
@@ -167,7 +165,7 @@ class CustomerTab(QWidget):
             title = self.catalog_table.item(selected_row, 0).text()
             author = self.catalog_table.item(selected_row, 1).text()
             # Check if there are items available for borrowing
-            items = int(self.catalog_table.item(selected_row, 4).text()) 
+            items = self.get_available_items(title, author)
             if items <= 0:
                 QMessageBox.warning(self, "Borrow Failed", f"The book '{title}' by {author} is out of stock.")
                 return
@@ -191,10 +189,6 @@ class CustomerTab(QWidget):
                 if reply == QMessageBox.StandardButton.Yes:
                     # Borrow the book
                     self.borrow_selected_book(selected_row)
-                    # Add the book into the borrowed_books table
-                    self.display_borrowed_books()
-                    # Add the book information into the user's history
-                    self.display_book_history()
         else:
             return
 
@@ -220,10 +214,22 @@ class CustomerTab(QWidget):
         book_query = {"title": title, "author": author}
         update_query = {"$inc": {"items": -1}}
         books_collection.update_one(book_query, update_query)
-        # Inform the user that the book has been borrowed
-        self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 7000)
+        self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 5000)
         # Add the book to the user's history
         self.add_to_user_history(title, author, borrowed_date)
+        # Refresh the borrowed books table
+        self.display_borrowed_books()
+        # Refresh the book history table
+        self.display_book_history()
+
+    def get_available_items(self, title, author):
+        books_collection = self.database_manager.db["books"]
+        book_query = {"title": title, "author": author}
+        book = books_collection.find_one(book_query)
+        if book:
+            return book.get("items", 0)  # Return the number of available items
+        else:
+            return 0  # Return 0 if the book is not found
 
     def is_book_already_borrowed(self, title, author):
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
@@ -244,7 +250,6 @@ class CustomerTab(QWidget):
         user_borrowed_books = borrowed_books_collection.find({"username": GlobalState.current_user})
         self.borrowed_books_table.setRowCount(0)
         for index, borrowed_book in enumerate(user_borrowed_books):
-                # Retrieve book information from the "books" collection
                 books_collection = self.database_manager.db["books"]
                 book_query = {"title": borrowed_book["title"], "author": borrowed_book["author"]}
                 book = books_collection.find_one(book_query)
@@ -253,7 +258,6 @@ class CustomerTab(QWidget):
                 # Display book information in the table
                 for col, prop in enumerate(["title", "author", "pages", "year"]):
                     self.borrowed_books_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
-                # Display book cover image
                 cover_label = QLabel()
                 cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}.png")
                 if os.path.exists(cover_path):
@@ -275,40 +279,6 @@ class CustomerTab(QWidget):
                 formatted_expiry_date = datetime.strftime(expiry_date, "%d/%m/%Y, %H:%M")
                 self.borrowed_books_table.setItem(index, 6, QTableWidgetItem(formatted_expiry_date))
         self.borrowed_books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
-
-    def return_book(self):
-        selected_row = self.tab_widget.widget(1).layout().itemAt(0).widget().currentRow()
-        number_of_selected_rows = len(self.tab_widget.widget(1).layout().itemAt(0).widget().selectionModel().selectedRows())
-        if number_of_selected_rows == 1:
-            # Get book information from the selected row
-            title = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 0).text()
-            author = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 1).text()
-            # Confirm returning with the user
-            reply = QMessageBox.question(
-                self,
-                "Return Book",
-                f"Do you want to return '{title}' by {author}?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.Cancel
-            )
-            if reply == QMessageBox.StandardButton.Yes:
-                # Return the book
-                self.return_selected_book(selected_row)
-        else:
-            return
-
-    def return_selected_book(self, selected_row):
-        # Get book information from the selected row
-        title = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 0).text()
-        author = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 1).text()
-        # Remove the document from the 'borrowed_books' collection
-        borrowed_books_collection = self.database_manager.db["borrowed_books"]
-        return_query = {"username": GlobalState.current_user, "title": title, "author": author}
-        borrowed_books_collection.delete_one(return_query)
-        # Inform the user that the book has been returned
-        self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 5000)
-        # Refresh the borrowed_books table
-        self.display_borrowed_books()
 
     def add_to_user_history(self, title, author, event_date):
         # Add the book information into the user's history
@@ -352,7 +322,39 @@ class CustomerTab(QWidget):
             self.history_table.setItem(index, 5, QTableWidgetItem(formatted_event_date))
         self.history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
-    def show_advanced_search_dialog(self):
+    def return_book(self):
+        selected_row = self.tab_widget.widget(1).layout().itemAt(0).widget().currentRow()
+        number_of_selected_rows = len(self.tab_widget.widget(1).layout().itemAt(0).widget().selectionModel().selectedRows())
+        if number_of_selected_rows == 1:
+            # Get book information from the selected row
+            title = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 0).text()
+            author = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 1).text()
+            # Confirm returning with the user
+            reply = QMessageBox.question(
+                self,
+                "Return Book",
+                f"Do you want to return '{title}' by {author}?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Cancel
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                # Return the book
+                self.return_selected_book(selected_row)
+        else:
+            return
+
+    def return_selected_book(self, selected_row):
+        title = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 0).text()
+        author = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 1).text()
+        # Remove the document from the 'borrowed_books' collection
+        # Increasing the number of copies in the 'books' database is done via MongoDB Triggers.
+        borrowed_books_collection = self.database_manager.db["borrowed_books"]
+        return_query = {"username": GlobalState.current_user, "title": title, "author": author}
+        borrowed_books_collection.delete_one(return_query)
+        self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 5000)
+        self.display_borrowed_books()
+
+    def show_search_dialog(self):
         dialog = AdvancedSearchDialog()
         result = dialog.exec()
         if result == QDialog.DialogCode.Accepted:

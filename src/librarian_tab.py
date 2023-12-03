@@ -1,14 +1,8 @@
 from PyQt6.QtWidgets import (
-      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QComboBox,  
-      QInputDialog, QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QLineEdit )
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt
-from bson import ObjectId
-from pathlib import Path
-import os
+      QWidget, QTabWidget, QHBoxLayout )
 from database_manager import DatabaseManager
-from global_state import GlobalState
-from datetime import datetime, timedelta , timezone
+from manage_books_tab import ManageBooksTab
+from manage_customers_tab import ManageCustomersTab
 
 
 class LibrarianTab(QWidget):
@@ -18,19 +12,16 @@ class LibrarianTab(QWidget):
         self.signals = signals
         self.statusBar = statusBar
         self.create_librarian_ui()
-        # Singals
-        self.signals.librarian_tab_state.connect(self.set_tab_state)
-        self.signals.librarian_logged_in.connect(self.init_librarian_tab)
-        # Connects
-
-    def init_librarian_tab(self):
-        pass
-
-    def set_tab_state(self, state):
-        # Disable/enable widgets in customer_tab depending on whether the user is logged in or not
-        if state == False: 
-            pass
 
     def create_librarian_ui(self):
-        pass
+        main_layout = QHBoxLayout()  
+        self.tab_widget = QTabWidget(self)
+        manage_books_tab = ManageBooksTab(self.database_manager, self.statusBar, self.signals)
+        manage_customers_tab = ManageCustomersTab(self.database_manager, self.statusBar, self.signals)
+        self.tab_widget.addTab(manage_books_tab, "Manage Books")
+        self.tab_widget.addTab(manage_customers_tab, "Manage Customers")
+        main_layout.addWidget(self.tab_widget)
+        self.setLayout(main_layout)
+
+
 

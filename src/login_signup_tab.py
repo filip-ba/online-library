@@ -30,7 +30,7 @@ class LoginSignupTab(QWidget):
         password_login.setEchoMode(QLineEdit.EchoMode.Password)
         role_customer_radio = QRadioButton("Customer")
         role_librarian_radio = QRadioButton("Librarian")
-        role_customer_radio.setChecked(True)
+        role_librarian_radio.setChecked(True)
         login_button = QPushButton("Login")
         logout_button = QPushButton("Logout")  # Added logout button
         login_layout.addRow("Username:", username_login)
