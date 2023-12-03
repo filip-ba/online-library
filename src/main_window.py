@@ -12,7 +12,7 @@ class MainWindow(QMainWindow):
         self.database_manager = database_manager
         self.signals = AppSignals()
         self.setWindowTitle("Online Library Management System")
-        self.setGeometry(50, 50, 700, 500)
+        self.setGeometry(50, 50, 700, 600)
         # Create main widget and layout
         main_widget = QWidget(self)
         self.setCentralWidget(main_widget)

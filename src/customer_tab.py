@@ -5,6 +5,7 @@ from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from pathlib import Path
 from datetime import datetime, timedelta , timezone
+from PyQt6.QtCore import QTimer
 import os
 import pymongo
 from database_manager import DatabaseManager
@@ -18,7 +19,6 @@ class CustomerTab(QWidget):
         self.database_manager = database_manager
         self.signals = signals
         self.statusBar = statusBar
-        self.searching = False
         self.create_customer_ui()
         # Signals
         self.signals.customer_tab_state.connect(self.set_tab_state)
@@ -29,14 +29,18 @@ class CustomerTab(QWidget):
         self.refresh_catalog_button.clicked.connect(lambda: self.display_book_catalog())
         self.advanced_search_button.clicked.connect(self.show_advanced_search_dialog)
         self.cancel_search_button.clicked.connect(self.cancel_search)
+        # QTimer for updating every 10 seconds
+        self.update_timer = QTimer(self)
+        self.update_timer.timeout.connect(self.update_borrowed_books)
+        self.update_timer.start(10000)
 
     def init_customer_tab(self):
-        self.load_tables()
-
-    def load_tables(self):
         self.display_book_catalog()
         self.display_borrowed_books()
         self.display_book_history()
+
+    def update_borrowed_books(self):
+        self.display_borrowed_books()
 
     def create_customer_ui(self):
         # Layout for the entire Customer tab
@@ -46,7 +50,7 @@ class CustomerTab(QWidget):
         self.advanced_search_button = QPushButton("Advanced Search")
         self.advanced_search_button.setEnabled(False)
         self.cancel_search_button = QPushButton("Cancel Search")
-        self.advanced_search_button.setEnabled(False)
+        self.cancel_search_button.setEnabled(False)
         self.edit_profile_button = QPushButton("Edit Profile")
         self.edit_profile_button.setEnabled(False)
         top_layout.addWidget(self.advanced_search_button)
@@ -211,8 +215,6 @@ class CustomerTab(QWidget):
         books_collection.update_one(book_query, update_query)
         # Inform the user that the book has been borrowed
         self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 7000)
-        # Refresh the book catalog
-        self.display_book_catalog()
         # Add the book to the user's history
         self.add_to_user_history(title, author, borrowed_date)
 
@@ -356,11 +358,11 @@ class CustomerTab(QWidget):
 
     def search_and_sort_catalog(self, search_mode, author_text, title_text, year_text):
         books_collection = self.database_manager.db["books"]
+        author_formatted = ""
+        title_formatted = ""
+        year_formatted = ""
         if search_mode:
             query = {}
-            author_formatted = ""
-            title_formatted = ""
-            year_formatted = ""
             if len(author_text) >= 3:
                 query["author"] = {"$regex": author_text, "$options": "i"}
                 author_formatted =(f"  Author: '{author_text}'")
@@ -372,7 +374,8 @@ class CustomerTab(QWidget):
                 year_formatted =(f"  Year: '{year_text}'")
             if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
                 self.signals.update_status_bar_widget.emit(f"Showing searches for: {author_formatted}{title_formatted}{year_formatted}")
-                self.searching = True
+                self.refresh_catalog_button.setEnabled(False)   # Disabling the button to refresh search results
+                self.cancel_search_button.setEnabled(True)    # Disable the button to cancel the search if the search is not in progress
                 cursor = books_collection.find(query)
                 self.display_book_catalog(cursor)
             else:
@@ -382,16 +385,25 @@ class CustomerTab(QWidget):
             sort_criteria = []
             if len(author_text) >= 3:
                 sort_criteria.append(("author", pymongo.ASCENDING))
+                author_formatted =(f"  Author: '{author_text}'")
             if len(title_text) >= 3:
                 sort_criteria.append(("title", pymongo.ASCENDING))
             if len(year_text) >= 3:
                 sort_criteria.append(("year", pymongo.ASCENDING))
-            self.searching = True
-            cursor = books_collection.find().sort(sort_criteria)
-            self.display_book_catalog(cursor)
+                title_formatted =(f"  Title: '{title_text}'")
+                year_formatted =(f"  Year: '{year_text}'")
+            if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
+                self.signals.update_status_bar_widget.emit(f"Sorted by: {author_formatted}{title_formatted}{year_formatted}")
+                self.refresh_catalog_button.setEnabled(False)  
+                self.cancel_search_button.setEnabled(True)    
+                cursor = books_collection.find().sort(sort_criteria)
+                self.display_book_catalog(cursor)
+            else:
+                self.statusBar.showMessage("The minimum character length required for searching/sorting is 3.", 5000)
+                return
 
     def cancel_search(self):
-        if self.searching == True:
-            self.searching = False
-            self.signals.update_status_bar_widget.emit("")
-            self.display_book_catalog()
+        self.refresh_catalog_button.setEnabled(True)
+        self.cancel_search_button.setEnabled(False) 
+        self.signals.update_status_bar_widget.emit("")
+        self.display_book_catalog()
