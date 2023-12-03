@@ -7,10 +7,10 @@ from pathlib import Path
 from datetime import datetime, timedelta , timezone
 from PyQt6.QtCore import QTimer
 import os
-import pymongo
 from database_manager import DatabaseManager
 from advanced_search_dialog import AdvancedSearchDialog
 from sort_books_dialog import SortBooksDialog
+from edit_profile_dialog import EditProfileDialog
 from global_state import GlobalState
 
 
@@ -31,6 +31,7 @@ class CustomerTab(QWidget):
         self.advanced_search_button.clicked.connect(self.show_advanced_search_dialog)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
         self.sort_books_button.clicked.connect(self.show_sorting_dialog)
+        self.edit_profile_button.clicked.connect(self.edit_profile)
         # QTimer for updating every 10 seconds
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.update_borrowed_books)
@@ -406,3 +407,4 @@ class CustomerTab(QWidget):
         self.cancel_button.setEnabled(False) 
         self.signals.update_status_bar_widget.emit("")
         self.display_book_catalog()
+
