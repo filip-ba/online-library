@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QLineEdit, 
+    QDialog, QVBoxLayout, QLabel, QLineEdit, QSpacerItem, 
     QPushButton, QRadioButton, QFormLayout, QHBoxLayout )
 from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator
 from PyQt6.QtCore import QRegularExpression
@@ -15,24 +15,13 @@ class AdvancedSearchDialog(QDialog):
         self.cancel_button.clicked.connect(self.reject)
 
     def create_dialog_ui(self):
-        self.setWindowTitle("Search or Sort Books")
+        self.setWindowTitle("Advanced Search")
         self.setFixedSize(400, 200)
         layout = QVBoxLayout()
         title_label = QLabel("Advanced Search")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setToolTip("Search and sort books based on author, title, and year. Minimum length: 3 characters.")
-        title_label.setWhatsThis("This dialog allows you to search and sort books based on author, title, and year. "
-                                 "Enter at least 3 characters in the respective fields to perform the search or sort.")
+        title_label.setToolTip("Search books based on author, title, and year. Minimum length: 3 characters.")
         layout.addWidget(title_label)
-        # Radio buttons for choosing between sorting and searching
-        self.search_radio = QRadioButton("Search")
-        self.sort_radio = QRadioButton("Sort")
-        self.search_radio.setChecked(True)
-        radio_layout = QHBoxLayout()
-        radio_layout.addWidget(self.search_radio)
-        radio_layout.addWidget(self.sort_radio)
-        radio_layout.setAlignment(Qt.AlignmentFlag.AlignLeft)
-        layout.addLayout(radio_layout)
         # Form layout for author, title, and year fields
         form_layout = QFormLayout()
         self.author_label = QLabel("Author:")
@@ -50,7 +39,9 @@ class AdvancedSearchDialog(QDialog):
         self.year_input.setMaxLength(4)
         self.year_input.setValidator(QIntValidator())  
         form_layout.addRow(self.year_label, self.year_input)
+        form_layout.setSpacing(10)
         layout.addLayout(form_layout)
+        layout.addSpacerItem(QSpacerItem(10, 10)) 
         # Buttons
         button_layout = QHBoxLayout()
         self.ok_button = QPushButton("Ok")
@@ -58,4 +49,5 @@ class AdvancedSearchDialog(QDialog):
         button_layout.addWidget(self.ok_button)
         button_layout.addWidget(self.cancel_button)
         layout.addLayout(button_layout)
+        # Set the layout
         self.setLayout(layout)

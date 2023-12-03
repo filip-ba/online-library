@@ -10,6 +10,7 @@ import os
 import pymongo
 from database_manager import DatabaseManager
 from advanced_search_dialog import AdvancedSearchDialog
+from sort_books_dialog import SortBooksDialog
 from global_state import GlobalState
 
 
@@ -28,7 +29,8 @@ class CustomerTab(QWidget):
         self.return_button.clicked.connect(self.return_book)
         self.refresh_catalog_button.clicked.connect(lambda: self.display_book_catalog())
         self.advanced_search_button.clicked.connect(self.show_advanced_search_dialog)
-        self.cancel_search_button.clicked.connect(self.cancel_search)
+        self.cancel_button.clicked.connect(self.cancel_search_or_sort)
+        self.sort_books_button.clicked.connect(self.show_sorting_dialog)
         # QTimer for updating every 10 seconds
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.update_borrowed_books)
@@ -49,12 +51,15 @@ class CustomerTab(QWidget):
         top_layout = QHBoxLayout()
         self.advanced_search_button = QPushButton("Advanced Search")
         self.advanced_search_button.setEnabled(False)
-        self.cancel_search_button = QPushButton("Cancel Search")
-        self.cancel_search_button.setEnabled(False)
+        self.sort_books_button = QPushButton("Sort Books")
+        self.sort_books_button.setEnabled(False)
+        self.cancel_button = QPushButton("Cancel Search/Sort")
+        self.cancel_button.setEnabled(False)
         self.edit_profile_button = QPushButton("Edit Profile")
         self.edit_profile_button.setEnabled(False)
         top_layout.addWidget(self.advanced_search_button)
-        top_layout.addWidget(self.cancel_search_button)
+        top_layout.addWidget(self.sort_books_button)
+        top_layout.addWidget(self.cancel_button)
         top_layout.addWidget(self.edit_profile_button)
         # Middle layout for the QTabWidget
         tab_layout = QHBoxLayout()
@@ -108,8 +113,9 @@ class CustomerTab(QWidget):
 
     def set_tab_state(self, state):
         # Disable/enable widgets in customer_tab depending on whether the user is logged in or not
-        self.edit_profile_button.setEnabled(state)
         self.advanced_search_button.setEnabled(state)
+        self.sort_books_button.setEnabled(state)
+        self.edit_profile_button.setEnabled(state)
         self.borrow_button.setEnabled(state)
         self.return_button.setEnabled(state)
         self.refresh_catalog_button.setEnabled(state)
@@ -349,61 +355,54 @@ class CustomerTab(QWidget):
         dialog = AdvancedSearchDialog()
         result = dialog.exec()
         if result == QDialog.DialogCode.Accepted:
-            # Retrieve user input from the dialog
-            search_mode = dialog.search_radio.isChecked()
             author_text = dialog.author_input.text()
             title_text = dialog.title_input.text()
             year_text = dialog.year_input.text()
-            self.search_and_sort_catalog(search_mode, author_text, title_text, year_text)
+            self.search_catalog(author_text, title_text, year_text)
 
-    def search_and_sort_catalog(self, search_mode, author_text, title_text, year_text):
+    def search_catalog(self, author_text, title_text, year_text):
         books_collection = self.database_manager.db["books"]
         author_formatted = ""
         title_formatted = ""
         year_formatted = ""
-        if search_mode:
-            query = {}
-            if len(author_text) >= 3:
-                query["author"] = {"$regex": author_text, "$options": "i"}
-                author_formatted =(f"  Author: '{author_text}'")
-            if len(title_text) >= 3:
-                query["title"] = {"$regex": title_text, "$options": "i"}
-                title_formatted =(f"  Title: '{title_text}'")
-            if len(year_text) >= 3:
-                query["year"] = {"$eq": int(year_text)}
-                year_formatted =(f"  Year: '{year_text}'")
-            if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
-                self.signals.update_status_bar_widget.emit(f"Showing searches for: {author_formatted}{title_formatted}{year_formatted}")
-                self.refresh_catalog_button.setEnabled(False)   # Disabling the button to refresh search results
-                self.cancel_search_button.setEnabled(True)    # Disable the button to cancel the search if the search is not in progress
-                cursor = books_collection.find(query)
-                self.display_book_catalog(cursor)
-            else:
-                self.statusBar.showMessage("The minimum character length required for searching/sorting is 3.", 5000)
-                return
+        query = {}
+        if len(author_text) >= 3:
+            query["author"] = {"$regex": author_text, "$options": "i"}
+            author_formatted =(f"  Author: '{author_text}'")
+        if len(title_text) >= 3:
+            query["title"] = {"$regex": title_text, "$options": "i"}
+            title_formatted =(f"  Title: '{title_text}'")
+        if len(year_text) >= 3:
+            query["year"] = {"$eq": int(year_text)}
+            year_formatted =(f"  Year: '{year_text}'")
+        if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
+            self.signals.update_status_bar_widget.emit(f"Showing searches for: {author_formatted}{title_formatted}{year_formatted}")
+            self.refresh_catalog_button.setEnabled(False)   # Disabling the button to refresh search results
+            self.cancel_button.setEnabled(True)    # Disable the button to cancel the search if the search is not in progress
+            cursor = books_collection.find(query)
+            self.display_book_catalog(cursor)
         else:
-            sort_criteria = []
-            if len(author_text) >= 3:
-                sort_criteria.append(("author", pymongo.ASCENDING))
-                author_formatted =(f"  Author: '{author_text}'")
-            if len(title_text) >= 3:
-                sort_criteria.append(("title", pymongo.ASCENDING))
-            if len(year_text) >= 3:
-                sort_criteria.append(("year", pymongo.ASCENDING))
-                title_formatted =(f"  Title: '{title_text}'")
-                year_formatted =(f"  Year: '{year_text}'")
-            if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
-                self.signals.update_status_bar_widget.emit(f"Sorted by: {author_formatted}{title_formatted}{year_formatted}")
-                self.refresh_catalog_button.setEnabled(False)  
-                self.cancel_search_button.setEnabled(True)    
-                cursor = books_collection.find().sort(sort_criteria)
-                self.display_book_catalog(cursor)
-            else:
-                self.statusBar.showMessage("The minimum character length required for searching/sorting is 3.", 5000)
-                return
+            self.statusBar.showMessage("The minimum character length required for searching/sorting is 3.", 7000)
+            return
 
-    def cancel_search(self):
+    def show_sorting_dialog(self):
+        dialog = SortBooksDialog()
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            sort_attr = dialog.attribute_combo.currentText().lower()
+            sort_ascend =  dialog.ascending_radio.isChecked()
+            self.refresh_catalog_button.setEnabled(False) 
+            self.cancel_button.setEnabled(True)
+            self.sort_catalog(sort_attr, sort_ascend)
+
+    def sort_catalog(self, sort_attr, sort_ascend):
+        books_collection = self.database_manager.db["books"]
+        cursor = books_collection.find().sort([(sort_attr, 1 if sort_ascend == True else -1)])
+        self.signals.update_status_bar_widget.emit(f"Sorted by {sort_attr}")
+        self.display_book_catalog(cursor)
+      
+    def cancel_search_or_sort(self):
         self.refresh_catalog_button.setEnabled(True)
-        self.cancel_search_button.setEnabled(False) 
+        self.cancel_button.setEnabled(False) 
         self.signals.update_status_bar_widget.emit("")
         self.display_book_catalog()
