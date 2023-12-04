@@ -114,9 +114,9 @@ class ManageBooksTab(QWidget):
             # Retrieve user input from the dialog
             title = dialog.title_input.text()
             author = dialog.author_input.text()
-            pages = dialog.pages_input.value()
+            pages = dialog.pages_input.text()
             year = dialog.year_input.text()
-            items = dialog.items_input.value()
+            items = dialog.items_input.text()
             image_name = dialog.image_input.text()
             # Validate that all fields are filled
             if not title or not author or not year or not image_name:

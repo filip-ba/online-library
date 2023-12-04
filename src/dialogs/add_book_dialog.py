@@ -1,4 +1,8 @@
-from PyQt6.QtWidgets import QDialog, QLabel, QLineEdit, QSpinBox, QPushButton, QVBoxLayout, QHBoxLayout
+from PyQt6.QtWidgets import ( 
+    QDialog, QLabel, QLineEdit, QPushButton, QSpacerItem, 
+    QHBoxLayout, QVBoxLayout, QFormLayout )
+from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator, QFont
+from PyQt6.QtCore import Qt, QRegularExpression
 
 
 class AddBookDialog(QDialog):
@@ -11,52 +15,54 @@ class AddBookDialog(QDialog):
 
     def create_dialog_ui(self):
         self.setWindowTitle("Add New Book")
-        self.setFixedSize(400, 200)
+        self.setFixedSize(500, 300)    
         layout = QVBoxLayout()
+        window_title_label = QLabel("Add New Book")
+        window_title_label.setStyleSheet("font-size: 14pt;")
+        window_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        window_title_label.setToolTip("You can add a new book to the catalog.")
+        layout.addWidget(window_title_label)
+        # Form layout
+        form_layout = QFormLayout()
         # Title
-        title_layout = QHBoxLayout()
         title_label = QLabel("Title:")
         self.title_input = QLineEdit()
-        title_layout.addWidget(title_label)
-        title_layout.addWidget(self.title_input)
-        layout.addLayout(title_layout)
+        self.title_input.setMaxLength(60)
+        form_layout.addRow(title_label, self.title_input)
         # Author
-        author_layout = QHBoxLayout()
         author_label = QLabel("Author:")
         self.author_input = QLineEdit()
-        author_layout.addWidget(author_label)
-        author_layout.addWidget(self.author_input)
-        layout.addLayout(author_layout)
+        self.author_input.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z ]+")))
+        self.author_input.setMaxLength(60)
+        form_layout.addRow(author_label, self.author_input)
         # Pages
-        pages_layout = QHBoxLayout()
         pages_label = QLabel("Pages:")
-        self.pages_input = QSpinBox()
-        self.pages_input.setMinimum(1)
-        pages_layout.addWidget(pages_label)
-        pages_layout.addWidget(self.pages_input)
-        layout.addLayout(pages_layout)
+        self.pages_input = QLineEdit()
+        self.pages_input.setValidator(QIntValidator())  
+        self.pages_input.setMaxLength(4)
+        form_layout.addRow(pages_label, self.pages_input)
         # Year
-        year_layout = QHBoxLayout()
         year_label = QLabel("Year:")
         self.year_input = QLineEdit()
-        year_layout.addWidget(year_label)
-        year_layout.addWidget(self.year_input)
-        layout.addLayout(year_layout)
+        self.year_input.setValidator(QIntValidator())  
+        self.year_input.setMaxLength(4)
+        form_layout.addRow(year_label, self.year_input)
         # Items
-        items_layout = QHBoxLayout()
         items_label = QLabel("Items:")
-        self.items_input = QSpinBox()
-        self.items_input.setMinimum(1)
-        items_layout.addWidget(items_label)
-        items_layout.addWidget(self.items_input)
-        layout.addLayout(items_layout)
+        self.items_input = QLineEdit()
+        self.items_input.setValidator(QIntValidator())  
+        self.items_input.setMaxLength(2)
+        form_layout.addRow(items_label, self.items_input)
         # Image Name
-        image_layout = QHBoxLayout()
         image_label = QLabel("Image Name:")
         self.image_input = QLineEdit()
-        image_layout.addWidget(image_label)
-        image_layout.addWidget(self.image_input)
-        layout.addLayout(image_layout)
+        self.image_input.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9]+")))
+        self.items_input.setMaxLength(60)
+        form_layout.addRow(image_label, self.image_input)
+        # Adding the form layout to the vertical layout
+        form_layout.setSpacing(10)  # Adding a space between the forms
+        layout.addLayout(form_layout)
+        layout.addSpacerItem(QSpacerItem(10, 10))   # Adding a space after the form layout
         # Buttons
         button_layout = QHBoxLayout()
         self.ok_button = QPushButton("Ok")
@@ -66,4 +72,3 @@ class AddBookDialog(QDialog):
         layout.addLayout(button_layout)
         # Set the layout
         self.setLayout(layout)
-

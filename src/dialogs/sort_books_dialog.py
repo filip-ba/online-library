@@ -1,5 +1,6 @@
-from PyQt6.QtWidgets import QDialog, QLabel, QComboBox, QRadioButton, QPushButton, QVBoxLayout, QHBoxLayout
+from PyQt6.QtWidgets import QDialog, QLabel, QComboBox, QRadioButton, QPushButton, QVBoxLayout, QHBoxLayout, QSpacerItem
 from PyQt6.QtCore import Qt
+
 
 class SortBooksDialog(QDialog):
     def __init__(self, parent=None):
@@ -14,6 +15,7 @@ class SortBooksDialog(QDialog):
         self.setFixedSize(400, 200)
         layout = QVBoxLayout()
         title_label = QLabel("Sorting Options")
+        title_label.setStyleSheet("font-size: 14pt;")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title_label.setToolTip("Sort books based on author, title, and year.")
         layout.addWidget(title_label)
