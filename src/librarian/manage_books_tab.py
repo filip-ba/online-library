@@ -1,12 +1,11 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, 
-      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel )
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt
-from pathlib import Path
-import os
-from global_state import GlobalState
+      QHBoxLayout, QTableWidget, QDialog )
 from database_manager import DatabaseManager
+from dialogs.add_book_dialog import AddBookDialog
+from shared_functions import display_book_catalog
+from shared_functions import advanced_search
+from shared_functions import sort_book_catalog
 
 
 class ManageBooksTab(QWidget):
@@ -20,16 +19,21 @@ class ManageBooksTab(QWidget):
         self.signals.librarian_tab_state.connect(self.set_tab_state)
         self.signals.librarian_logged_in.connect(self.init_librarian_tab)
         # Connects
+        self.refresh_catalog_button.clicked.connect(lambda: self.display_books())
+        self.advanced_search_button.clicked.connect(self.search_books)
+        self.cancel_button.clicked.connect(self.cancel_search_or_sort)
+        self.sort_books_button.clicked.connect(self.sort_books)
+        self.add_book_button.clicked.connect(self.show_add_book_dialog)
         self.delete_book_button.clicked.connect(self.delete_selected_book)
 
     def init_librarian_tab(self):
-        self.display_book_catalog()
+        self.display_books()
 
     def set_tab_state(self, state):
         # Disable/enable widgets in customer_tab depending on whether the user is logged in or not
-        self.assign_book_button.setEnabled(state)
+        self.advanced_search_button.setEnabled(state)
         self.sort_books_button.setEnabled(state)
-        self.edit_profile_button.setEnabled(state)
+        self.cancel_button.setEnabled(state)
         self.add_book_button.setEnabled(state)
         self.edit_book_button.setEnabled(state)
         self.delete_book_button.setEnabled(state)
@@ -43,18 +47,18 @@ class ManageBooksTab(QWidget):
         layout = QVBoxLayout()
         # Top layout for "Advanced Search" and "Edit Profile" buttons
         top_layout = QHBoxLayout()
-        self.assign_book_button = QPushButton("Assign a Book")
-        self.assign_book_button.setEnabled(False)
+        self.advanced_search_button = QPushButton("Advanced Search")
+        self.advanced_search_button.setEnabled(False)
         self.sort_books_button = QPushButton("Sort Books")
         self.sort_books_button.setEnabled(False)
         self.cancel_button = QPushButton("Cancel Search/Sort")
         self.cancel_button.setEnabled(False)
-        self.edit_profile_button = QPushButton("Edit Profile")
-        self.edit_profile_button.setEnabled(False)
-        top_layout.addWidget(self.assign_book_button)
+        self.refresh_catalog_button = QPushButton("Refresh Catalog")
+        self.refresh_catalog_button.setEnabled(False)
+        top_layout.addWidget(self.advanced_search_button)
         top_layout.addWidget(self.sort_books_button)
         top_layout.addWidget(self.cancel_button)
-        top_layout.addWidget(self.edit_profile_button)
+        top_layout.addWidget(self.refresh_catalog_button)
         # Middle layout for the QTabWidget
         tab_layout = QHBoxLayout()
         self.tab_widget = QTabWidget()
@@ -86,37 +90,54 @@ class ManageBooksTab(QWidget):
         layout.addLayout(bottom_layout)
         self.setLayout(layout)
 
-    def display_book_catalog(self, cursor=None):
-        if cursor is None:
-            books_collection = self.database_manager.db["books"]
-            cursor = books_collection.find()
-        self.catalog_table.setRowCount(0)
-        for index, book in enumerate(cursor):
-            self.catalog_table.insertRow(index)
-            self.catalog_table.setItem(index, 0, QTableWidgetItem(book["title"]))
-            self.catalog_table.setItem(index, 1, QTableWidgetItem(book["author"]))
-            self.catalog_table.setItem(index, 2, QTableWidgetItem(str(book["pages"])))
-            self.catalog_table.setItem(index, 3, QTableWidgetItem(str(book["year"])))
-            self.catalog_table.setItem(index, 4, QTableWidgetItem(str(book["items"])))
-            # Display book cover image
-            cover_label = QLabel()
-            # Construct the absolute path to the book cover image
-            cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}.png")
-            # Check if the file exists before attempting to load
-            if os.path.exists(cover_path):
-                pixmap = QPixmap(cover_path)
-                scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                cover_label.setPixmap(scaled_pixmap)
-                # Set the row height dynamically based on the image height
-                self.catalog_table.setRowHeight(index, scaled_pixmap.height())
-                # Set the alignment of the image within the cell
-                cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.catalog_table.setCellWidget(index, 5, cover_label)  
-            else:
-                placeholder_label = QLabel("No Image")
-                self.catalog_table.setCellWidget(index, 5, placeholder_label) 
-        # Set the whole table as read-only
-        self.catalog_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+    def display_books(self, cursor=None):
+        display_book_catalog(self, self.catalog_table, cursor)
+
+    def search_books(self):
+        advanced_search(self, self.signals, self.statusBar, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
+
+    def sort_books(self):
+        sort_book_catalog(self, self.signals, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
+
+    def cancel_search_or_sort(self):
+        self.refresh_catalog_button.setEnabled(True)
+        self.cancel_button.setEnabled(False) 
+        self.signals.update_status_bar_widget.emit("")
+        self.display_books()
+
+
+
+    def show_add_book_dialog(self):
+        dialog = AddBookDialog()
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            # Retrieve user input from the dialog
+            title = dialog.title_input.text()
+            author = dialog.author_input.text()
+            pages = dialog.pages_input.value()
+            year = dialog.year_input.text()
+            items = dialog.items_input.value()
+            image_name = dialog.image_input.text()
+            # Validate that all fields are filled
+            if not title or not author or not year or not image_name:
+                QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
+                return
+            self.add_new_book(title, author, pages, year, items, image_name)
+
+    def add_new_book(self, title, author, pages, year, items, image_name):
+        books_collection = self.database_manager.db["books"]
+        new_book = {
+            "title": title,
+            "author": author,
+            "pages": pages,
+            "year": year,
+            "items": items,
+            "image_name": image_name
+        }
+        books_collection.insert_one(new_book)
+        self.display_books()
+
+
 
     def delete_selected_book(self):
         selected_row = self.catalog_table.currentRow()
@@ -145,10 +166,12 @@ class ManageBooksTab(QWidget):
         book_query = {"title": title, "author": author}
         books_collection.delete_one(book_query)
         self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 5000)
-        self.display_book_catalog()
+        self.display_books()
 
     def is_book_borrowed(self, title, author):
         # Check if the book is in the borrowed_books collection
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         borrowed_book = borrowed_books_collection.find_one({"title": title, "author": author})
         return borrowed_book is not None
+    
+

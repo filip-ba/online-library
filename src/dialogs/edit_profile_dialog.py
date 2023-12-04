@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QDialog, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout
-from PyQt6.QtCore import Qt
+
 
 class EditProfileDialog(QDialog):
     def __init__(self, current_user_info, parent=None):

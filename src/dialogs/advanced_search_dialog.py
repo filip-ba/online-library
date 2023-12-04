@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QDialog, QVBoxLayout, QLabel, QLineEdit, QSpacerItem, 
-    QPushButton, QRadioButton, QFormLayout, QHBoxLayout )
+    QPushButton, QFormLayout, QHBoxLayout )
 from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator
 from PyQt6.QtCore import QRegularExpression
 from PyQt6.QtCore import Qt

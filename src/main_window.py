@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import  QMainWindow, QWidget, QVBoxLayout, QLabel, QTabWidget
 from PyQt6.QtCore import pyqtSignal, Qt, QObject
 from database_manager import DatabaseManager
-from librarian_tab import LibrarianTab
-from customer_tab import CustomerTab
+from librarian.librarian_tab import LibrarianTab
+from customer.customer_tab import CustomerTab
 from login_signup_tab import LoginSignupTab
 
 

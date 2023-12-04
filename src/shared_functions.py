@@ -7,8 +7,8 @@ from pathlib import Path
 import bcrypt  
 import os
 from global_state import GlobalState
-from advanced_search_dialog import AdvancedSearchDialog
-from sort_books_dialog import SortBooksDialog
+from dialogs.advanced_search_dialog import AdvancedSearchDialog
+from dialogs.sort_books_dialog import SortBooksDialog
 
 
 def create_account(self, username, password, role, first_name, last_name, ssn, address, statusBar):

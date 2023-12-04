@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import (
       QWidget, QTabWidget, QHBoxLayout )
 from database_manager import DatabaseManager
-from manage_books_tab import ManageBooksTab
-from manage_customers_tab import ManageCustomersTab
+from librarian.manage_books_tab import ManageBooksTab
+from librarian.manage_customers_tab import ManageCustomersTab
 
 
 class LibrarianTab(QWidget):

@@ -4,7 +4,7 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from pathlib import Path
-from datetime import datetime, timedelta , timezone
+from datetime import datetime, timedelta, timezone
 from PyQt6.QtCore import QTimer
 import os
 from database_manager import DatabaseManager
@@ -26,12 +26,12 @@ class CustomerTab(QWidget):
         self.signals.customer_tab_state.connect(self.set_tab_state)
         self.signals.customer_logged_in.connect(self.init_customer_tab)
         # Connects
-        self.borrow_button.clicked.connect(self.borrow_book)
-        self.return_button.clicked.connect(self.return_book)
         self.refresh_catalog_button.clicked.connect(lambda: self.display_books())
         self.advanced_search_button.clicked.connect(self.search_books)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
         self.sort_books_button.clicked.connect(self.sort_books)
+        self.borrow_button.clicked.connect(self.borrow_book)
+        self.return_button.clicked.connect(self.return_book)
         # QTimer for updating every 10 seconds
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.update_borrowed_books)
@@ -56,12 +56,12 @@ class CustomerTab(QWidget):
         self.sort_books_button.setEnabled(False)
         self.cancel_button = QPushButton("Cancel Search/Sort")
         self.cancel_button.setEnabled(False)
-        self.edit_profile_button = QPushButton("Edit Profile")
-        self.edit_profile_button.setEnabled(False)
+        self.refresh_catalog_button = QPushButton("Refresh Catalog")
+        self.refresh_catalog_button.setEnabled(False)
         top_layout.addWidget(self.advanced_search_button)
         top_layout.addWidget(self.sort_books_button)
         top_layout.addWidget(self.cancel_button)
-        top_layout.addWidget(self.edit_profile_button)
+        top_layout.addWidget(self.refresh_catalog_button)
         # Middle layout for the QTabWidget
         tab_layout = QHBoxLayout()
         self.tab_widget = QTabWidget()
@@ -100,11 +100,11 @@ class CustomerTab(QWidget):
         self.borrow_button.setEnabled(False)
         self.return_button = QPushButton("Return")
         self.return_button.setEnabled(False)
-        self.refresh_catalog_button = QPushButton("Refresh Catalog")
-        self.refresh_catalog_button.setEnabled(False)
+        self.edit_profile_button = QPushButton("Edit Profile")
+        self.edit_profile_button.setEnabled(False)
         bottom_layout.addWidget(self.borrow_button)
         bottom_layout.addWidget(self.return_button)
-        bottom_layout.addWidget(self.refresh_catalog_button)
+        bottom_layout.addWidget(self.edit_profile_button)
         # Add layouts to the main layout
         layout.addLayout(top_layout)
         layout.addLayout(tab_layout)
@@ -231,7 +231,7 @@ class CustomerTab(QWidget):
                 for col, prop in enumerate(["title", "author", "pages", "year"]):
                     self.borrowed_books_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
                 cover_label = QLabel()
-                cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}.png")
+                cover_path = os.path.join(Path(__file__).resolve().parent.parent.parent, "book_covers", f"{book['image_name']}.png")
                 if os.path.exists(cover_path):
                     pixmap = QPixmap(cover_path)
                     scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
