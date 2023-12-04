@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QDialog,
+      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox,
       QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
@@ -8,10 +8,11 @@ from datetime import datetime, timedelta , timezone
 from PyQt6.QtCore import QTimer
 import os
 from database_manager import DatabaseManager
-from advanced_search_dialog import AdvancedSearchDialog
-from sort_books_dialog import SortBooksDialog
-from edit_profile_dialog import EditProfileDialog
 from global_state import GlobalState
+from shared_functions import display_book_catalog
+from shared_functions import display_book_history
+from shared_functions import advanced_search
+from shared_functions import sort_book_catalog
 
 
 class CustomerTab(QWidget):
@@ -27,19 +28,19 @@ class CustomerTab(QWidget):
         # Connects
         self.borrow_button.clicked.connect(self.borrow_book)
         self.return_button.clicked.connect(self.return_book)
-        self.refresh_catalog_button.clicked.connect(lambda: self.display_book_catalog())
-        self.advanced_search_button.clicked.connect(self.show_search_dialog)
+        self.refresh_catalog_button.clicked.connect(lambda: self.display_books())
+        self.advanced_search_button.clicked.connect(self.search_books)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
-        self.sort_books_button.clicked.connect(self.show_sorting_dialog)
+        self.sort_books_button.clicked.connect(self.sort_books)
         # QTimer for updating every 10 seconds
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.update_borrowed_books)
         self.update_timer.start(10000)
 
     def init_customer_tab(self):
-        self.display_book_catalog()
+        self.display_books()
         self.display_borrowed_books()
-        self.display_book_history()
+        self.display_history()
 
     def update_borrowed_books(self):
         self.display_borrowed_books()
@@ -124,37 +125,8 @@ class CustomerTab(QWidget):
             self.borrowed_books_table.setRowCount(0) 
             self.tab_widget.setCurrentIndex(0)    # Displaying the catalog tab
 
-    def display_book_catalog(self, cursor=None):
-        if cursor is None:
-            books_collection = self.database_manager.db["books"]
-            cursor = books_collection.find()
-        self.catalog_table.setRowCount(0)
-        for index, book in enumerate(cursor):
-            self.catalog_table.insertRow(index)
-            self.catalog_table.setItem(index, 0, QTableWidgetItem(book["title"]))
-            self.catalog_table.setItem(index, 1, QTableWidgetItem(book["author"]))
-            self.catalog_table.setItem(index, 2, QTableWidgetItem(str(book["pages"])))
-            self.catalog_table.setItem(index, 3, QTableWidgetItem(str(book["year"])))
-            self.catalog_table.setItem(index, 4, QTableWidgetItem(str(book["items"])))
-            # Display book cover image
-            cover_label = QLabel()
-            # Construct the absolute path to the book cover image
-            cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}.png")
-            # Check if the file exists before attempting to load
-            if os.path.exists(cover_path):
-                pixmap = QPixmap(cover_path)
-                scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                cover_label.setPixmap(scaled_pixmap)
-                # Set the row height dynamically based on the image height
-                self.catalog_table.setRowHeight(index, scaled_pixmap.height())
-                # Set the alignment of the image within the cell
-                cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.catalog_table.setCellWidget(index, 5, cover_label)  
-            else:
-                placeholder_label = QLabel("No Image")
-                self.catalog_table.setCellWidget(index, 5, placeholder_label) 
-        # Set the whole table as read-only
-        self.catalog_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+    def display_books(self, cursor=None):
+        display_book_catalog(self, self.catalog_table, cursor)
 
     def borrow_book(self):
         # Get the selected row
@@ -220,7 +192,7 @@ class CustomerTab(QWidget):
         # Refresh the borrowed books table
         self.display_borrowed_books()
         # Refresh the book history table
-        self.display_book_history()
+        self.display_history()
 
     def get_available_items(self, title, author):
         books_collection = self.database_manager.db["books"]
@@ -291,36 +263,8 @@ class CustomerTab(QWidget):
         }
         history_collection.insert_one(history_entry)
 
-    def display_book_history(self):
-        # Display the user's book history in the history_table
-        history_collection = self.database_manager.db["history"]
-        user_history = history_collection.find({"username": GlobalState.current_user})
-        self.history_table.setRowCount(0)
-        for index, history_entry in enumerate(user_history):
-            self.history_table.insertRow(index)
-            for col, prop in enumerate(["title", "author", "pages", "year"]):
-                # Retrieve book information from the "books" collection
-                books_collection = self.database_manager.db["books"]
-                book_query = {"title": history_entry["title"], "author": history_entry["author"]}
-                book = books_collection.find_one(book_query)
-                self.history_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
-            # Display book cover image
-            cover_label = QLabel()
-            cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}.png")
-            if os.path.exists(cover_path):
-                pixmap = QPixmap(cover_path)
-                scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                cover_label.setPixmap(scaled_pixmap)
-                self.history_table.setRowHeight(index, scaled_pixmap.height())
-                cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.history_table.setCellWidget(index, 4, cover_label)
-            else:
-                placeholder_label = QLabel("No Image")
-                self.history_table.setCellWidget(index, 4, placeholder_label)
-            # Display the event date in the fifth column
-            formatted_event_date = datetime.strftime(history_entry["event_date"], "%d/%m/%Y, %H:%M")
-            self.history_table.setItem(index, 5, QTableWidgetItem(formatted_event_date))
-        self.history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+    def display_history(self):
+        display_book_history(self, self.history_table)
 
     def return_book(self):
         selected_row = self.tab_widget.widget(1).layout().itemAt(0).widget().currentRow()
@@ -354,59 +298,15 @@ class CustomerTab(QWidget):
         self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 5000)
         self.display_borrowed_books()
 
-    def show_search_dialog(self):
-        dialog = AdvancedSearchDialog()
-        result = dialog.exec()
-        if result == QDialog.DialogCode.Accepted:
-            author_text = dialog.author_input.text()
-            title_text = dialog.title_input.text()
-            year_text = dialog.year_input.text()
-            self.search_catalog(author_text, title_text, year_text)
+    def search_books(self):
+        advanced_search(self, self.signals, self.statusBar, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
 
-    def search_catalog(self, author_text, title_text, year_text):
-        books_collection = self.database_manager.db["books"]
-        author_formatted = ""
-        title_formatted = ""
-        year_formatted = ""
-        query = {}
-        if len(author_text) >= 3:
-            query["author"] = {"$regex": author_text, "$options": "i"}
-            author_formatted =(f"  Author: '{author_text}'")
-        if len(title_text) >= 3:
-            query["title"] = {"$regex": title_text, "$options": "i"}
-            title_formatted =(f"  Title: '{title_text}'")
-        if len(year_text) >= 3:
-            query["year"] = {"$eq": int(year_text)}
-            year_formatted =(f"  Year: '{year_text}'")
-        if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
-            self.signals.update_status_bar_widget.emit(f"Showing searches for: {author_formatted}{title_formatted}{year_formatted}")
-            self.refresh_catalog_button.setEnabled(False)   # Disabling the button to refresh search results
-            self.cancel_button.setEnabled(True)    # Disable the button to cancel the search if the search is not in progress
-            cursor = books_collection.find(query)
-            self.display_book_catalog(cursor)
-        else:
-            self.statusBar.showMessage("The minimum character length required for searching/sorting is 3.", 7000)
-            return
-
-    def show_sorting_dialog(self):
-        dialog = SortBooksDialog()
-        result = dialog.exec()
-        if result == QDialog.DialogCode.Accepted:
-            sort_attr = dialog.attribute_combo.currentText().lower()
-            sort_ascend =  dialog.ascending_radio.isChecked()
-            self.refresh_catalog_button.setEnabled(False) 
-            self.cancel_button.setEnabled(True)
-            self.sort_catalog(sort_attr, sort_ascend)
-
-    def sort_catalog(self, sort_attr, sort_ascend):
-        books_collection = self.database_manager.db["books"]
-        cursor = books_collection.find().sort([(sort_attr, 1 if sort_ascend == True else -1)])
-        self.signals.update_status_bar_widget.emit(f"Sorted by {sort_attr}")
-        self.display_book_catalog(cursor)
+    def sort_books(self):
+        sort_book_catalog(self, self.signals, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
       
     def cancel_search_or_sort(self):
         self.refresh_catalog_button.setEnabled(True)
         self.cancel_button.setEnabled(False) 
         self.signals.update_status_bar_widget.emit("")
-        self.display_book_catalog()
+        self.display_books()
 
