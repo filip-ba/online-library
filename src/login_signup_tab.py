@@ -28,15 +28,10 @@ class LoginSignupTab(QWidget):
         username_login = QLineEdit()
         password_login = QLineEdit()
         password_login.setEchoMode(QLineEdit.EchoMode.Password)
-        role_customer_radio = QRadioButton("Customer")
-        role_librarian_radio = QRadioButton("Librarian")
-        role_librarian_radio.setChecked(True)
         login_button = QPushButton("Login")
         logout_button = QPushButton("Logout")  # Added logout button
         login_layout.addRow("Username:", username_login)
         login_layout.addRow("Password:", password_login)
-        login_layout.addRow("Role:", role_customer_radio)
-        login_layout.addWidget(role_librarian_radio)
         login_layout.addRow("", login_button)
         login_layout.addRow("", logout_button)  # Added logout button
         # Layout for signup_tab
@@ -77,22 +72,26 @@ class LoginSignupTab(QWidget):
         login_signup_layout.addWidget(login_signup_tabs)
         # Connects
         signup_button.clicked.connect(lambda: self.create_account(username_signup.text(), password_signup.text(), "Customer", first_name_signup.text(), last_name_signup.text(), ssn_signup.text(), address_signup.text()))
-        login_button.clicked.connect(lambda: self.login(username_login.text(), password_login.text(), "Customer" if role_customer_radio.isChecked() else "Librarian"))
+        login_button.clicked.connect(lambda: self.login(username_login.text(), password_login.text()))
         logout_button.clicked.connect(self.logout) 
 
-    def login(self, username, password, role):
+    def login(self, username, password):
         if GlobalState.current_user:
             QMessageBox.information(self, "Warning", "Another user is already logged in. Please sign out first.")
             return
-        user_collection = self.database_manager.db["librarians" if role == "Librarian" else "customers"]
+        user_collection = self.database_manager.db["users"]
         user_data = user_collection.find_one({"username": username})
-        if user_data and role == "Customer":
+        if user_data:
+            user_role = user_data["role"]
+        else:
+            return
+        if user_role == "Customer":
             if user_data["acc_activated"] == False:
                 QMessageBox.information(self, "Inactivated account", "Your account hasen't been activated yet.")
                 return
         if user_data and bcrypt.checkpw(password.encode('utf-8'), user_data["password"].encode('utf-8')):
             GlobalState.current_user = username
-            GlobalState.current_role = role
+            GlobalState.current_role = user_role
             self.signals.update_status.emit(f"Logged in as {GlobalState.current_user} with role {GlobalState.current_role}")
             self.update_tab_access()
         else:
@@ -121,7 +120,7 @@ class LoginSignupTab(QWidget):
             QMessageBox.information(self, "Registration Failed", "Please fill in all the required fields.")
             return
         # Check if the username or SSN already exists in the database
-        customer_collection = self.database_manager.db["customers"]
+        customer_collection = self.database_manager.db["users"]
         existing_username = customer_collection.find_one({"username": username})
         existing_ssn = customer_collection.find_one({"ssn": ssn})
         if existing_username and existing_ssn:
@@ -131,7 +130,7 @@ class LoginSignupTab(QWidget):
         elif existing_ssn:
             QMessageBox.information(self, "Registration Failed", "Birth number already exists.")
         else:
-            # Save the new customer into the customers collection
+            # Save the new customer into the users collection
             new_customer = {
                 "username": username,
                 "password": str(bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()), 'utf-8'),  
