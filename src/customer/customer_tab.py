@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox,
-      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel )
+      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QHeaderView )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from pathlib import Path
@@ -50,9 +50,9 @@ class CustomerTab(QWidget):
         layout = QVBoxLayout()
         # Top layout for "Advanced Search" and "Edit Profile" buttons
         top_layout = QHBoxLayout()
-        self.advanced_search_button = QPushButton("Advanced Search")
+        self.advanced_search_button = QPushButton("Open Search")
         self.advanced_search_button.setEnabled(False)
-        self.sort_books_button = QPushButton("Sort Books")
+        self.sort_books_button = QPushButton("Open Sort Options")
         self.sort_books_button.setEnabled(False)
         self.cancel_button = QPushButton("Cancel Search/Sort")
         self.cancel_button.setEnabled(False)
@@ -75,11 +75,15 @@ class CustomerTab(QWidget):
         self.catalog_table.setColumnCount(6) 
         self.catalog_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Items", "Book Cover"])
         catalog_layout.addWidget(self.catalog_table)
+        header = self.catalog_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         # Layout for the Borrowed Books tab
         borrowed_books_layout = QVBoxLayout(borrowed_books_tab)
         self.borrowed_books_table = QTableWidget()
         self.borrowed_books_table.setColumnCount(7)
         self.borrowed_books_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Borrow Date", "Due Date"])
+        header = self.borrowed_books_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         # Add code to populate borrowed_books_table with data from MongoDB
         borrowed_books_layout.addWidget(self.borrowed_books_table)
         # Layout for the History tab
@@ -87,6 +91,8 @@ class CustomerTab(QWidget):
         self.history_table = QTableWidget()
         self.history_table.setColumnCount(6)  
         self.history_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Date Borrowed"])
+        header = self.history_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         # Add code to populate history_table with data from MongoDB
         history_layout.addWidget(self.history_table)
         # Add tabs to the QTabWidget
@@ -106,6 +112,9 @@ class CustomerTab(QWidget):
         bottom_layout.addWidget(self.return_button)
         bottom_layout.addWidget(self.edit_profile_button)
         # Add layouts to the main layout
+        top_layout.setContentsMargins(15, 15, 15, 7)
+        tab_layout.setContentsMargins(15, 8, 15, 8)
+        bottom_layout.setContentsMargins(15, 7, 15, 15)
         layout.addLayout(top_layout)
         layout.addLayout(tab_layout)
         layout.addLayout(bottom_layout)

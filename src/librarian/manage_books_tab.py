@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, 
-      QHBoxLayout, QTableWidget, QDialog )
+      QHBoxLayout, QTableWidget, QDialog, QHeaderView )
 from database_manager import DatabaseManager
 from dialogs.add_book_dialog import AddBookDialog
 from shared_functions import display_book_catalog
@@ -49,9 +49,9 @@ class ManageBooksTab(QWidget):
         layout = QVBoxLayout()
         # Top layout for "Advanced Search" and "Edit Profile" buttons
         top_layout = QHBoxLayout()
-        self.advanced_search_button = QPushButton("Advanced Search")
+        self.advanced_search_button = QPushButton("Open Search")
         self.advanced_search_button.setEnabled(False)
-        self.sort_books_button = QPushButton("Sort Books")
+        self.sort_books_button = QPushButton("Open Sort Options")
         self.sort_books_button.setEnabled(False)
         self.cancel_button = QPushButton("Cancel Search/Sort")
         self.cancel_button.setEnabled(False)
@@ -71,6 +71,8 @@ class ManageBooksTab(QWidget):
         self.catalog_table = QTableWidget()
         self.catalog_table.setColumnCount(6) 
         self.catalog_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Items", "Book Cover"])
+        header = self.catalog_table.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         catalog_layout.addWidget(self.catalog_table)
         # Add tabs to the QTabWidget
         self.tab_widget.addTab(catalog_tab, "Book Catalog")
@@ -87,6 +89,9 @@ class ManageBooksTab(QWidget):
         bottom_layout.addWidget(self.edit_book_button)
         bottom_layout.addWidget(self.delete_book_button)
         # Add layouts to the main layout
+        top_layout.setContentsMargins(15, 15, 15, 7)
+        tab_layout.setContentsMargins(15, 8, 15, 8)
+        bottom_layout.setContentsMargins(15, 7, 15, 15)
         layout.addLayout(top_layout)
         layout.addLayout(tab_layout)
         layout.addLayout(bottom_layout)
@@ -119,7 +124,7 @@ class ManageBooksTab(QWidget):
             items = dialog.items_input.text()
             image_name = dialog.image_input.text()
             # Validate that all fields are filled
-            if not title or not author or not year or not image_name:
+            if not title or not author or not pages or not year or not items or not image_name:
                 QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
                 return
             self.add_new_book(title, author, pages, year, items, image_name)
@@ -129,12 +134,13 @@ class ManageBooksTab(QWidget):
         new_book = {
             "title": title,
             "author": author,
-            "pages": pages,
-            "year": year,
-            "items": items,
+            "pages": int(pages),
+            "year": int(year),
+            "items": int(items),
             "image_name": image_name
         }
         books_collection.insert_one(new_book)
+        self.statusBar.showMessage(f"You have added a book '{title}' by {author}.", 7000)
         self.display_books()
 
     def show_edit_book_dialog(self):
@@ -142,11 +148,11 @@ class ManageBooksTab(QWidget):
         number_of_selected_rows = len(self.catalog_table.selectionModel().selectedRows())
         if number_of_selected_rows == 1:
             # Get title and author from the selected row
-            title = self.catalog_table.item(selected_row, 0).text()
-            author = self.catalog_table.item(selected_row, 1).text()
+            current_title = self.catalog_table.item(selected_row, 0).text()
+            current_author = self.catalog_table.item(selected_row, 1).text()
             # Retrieve book data from the database based on title and author
             books_collection = self.database_manager.db["books"]
-            query = {"title": title, "author": author}
+            query = {"title": current_title, "author": current_author}
             book_data = books_collection.find_one(query)
             dialog = EditBookDialog(book_data)
             result = dialog.exec()
@@ -177,6 +183,8 @@ class ManageBooksTab(QWidget):
             if None in edited_data.values():
                 QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
                 return
+            # Show a status bar message
+            self.statusBar.showMessage(f"You have edited '{current_title}' by {current_author}.", 7000)
             # Call a function to update the book information
             self.edit_book(book_data, edited_data)
 
@@ -224,7 +232,7 @@ class ManageBooksTab(QWidget):
         books_collection = self.database_manager.db["books"]
         book_query = {"title": title, "author": author}
         books_collection.delete_one(book_query)
-        self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 5000)
+        self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 7000)
         self.display_books()
 
     def is_book_borrowed(self, title, author):

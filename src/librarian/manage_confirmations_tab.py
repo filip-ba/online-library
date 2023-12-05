@@ -1,12 +1,17 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QComboBox, QListView, QSpacerItem, QSizePolicy,  
-      QInputDialog, QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QLineEdit, QGroupBox, QHeaderView )
+      QInputDialog, QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QLineEdit, QGroupBox, QGridLayout )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
+from bson import ObjectId
+from pathlib import Path
+import os
+from global_state import GlobalState
+from datetime import datetime, timedelta , timezone
 from database_manager import DatabaseManager
 
 
-class ManageCustomersTab(QWidget):
+class ManageConfirmationsTab(QWidget):
     def __init__(self, database_manager: DatabaseManager, statusBar, signals):
         super().__init__()
         self.database_manager = database_manager
@@ -39,16 +44,7 @@ class ManageCustomersTab(QWidget):
         search_sort_layout.addWidget(cancel_button)
         search_sort_layout.addWidget(refresh_button)
         # QTableWidget for Customer Accounts
-        self.customers_table = QTableWidget()
-        self.tab_widget = QTabWidget()
-        customer_table_tab = QWidget()
-        self.customers_table.setColumnCount(5) 
-        self.customers_table.setHorizontalHeaderLabels(["Username", "First Name", "Last Name", "Birth Number", "Address"])
-        header = self.customers_table.horizontalHeader()
-        header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        customer_table_layout = QVBoxLayout(customer_table_tab)
-        customer_table_layout.addWidget(self.customers_table)
-        self.tab_widget.addTab(customer_table_tab, "Customer Table")
+        table_widget = QTableWidget()
         # GroupBox for Borrowed Books, Show History, Assign Book, Remove Book
         group_box_3 = QGroupBox("Books Actions")
         books_actions_layout = QVBoxLayout(group_box_3)
@@ -69,18 +65,13 @@ class ManageCustomersTab(QWidget):
         account_actions_layout.addWidget(add_account_button)
         account_actions_layout.addWidget(edit_account_button)
         account_actions_layout.addWidget(ban_account_button)
-        # Set max height
-        group_box_2.setMaximumHeight(100)
         # Add widgets to main layout
-        left_layout.addWidget(self.tab_widget)
+        left_layout.addWidget(table_widget)
         right_layout.addWidget(group_box_1)
         right_layout.addWidget(group_box_2)
         right_layout.addWidget(group_box_3)
         right_layout.addWidget(group_box_4)
-        # Layout Margins
-        left_layout.setContentsMargins(15, 15, 7, 15)
-        right_layout.setContentsMargins(8, 30, 15, 15)
-        # Main layout
+        # main layout
         main_layout.addLayout(left_layout)
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)

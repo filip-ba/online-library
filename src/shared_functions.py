@@ -20,6 +20,9 @@ def create_account(self, username, password, role, first_name, last_name, ssn, a
     if any(not field for field in [username, password, role, first_name, last_name, ssn, address]):
         QMessageBox.information(self, "Registration Failed", "Please fill in all the required fields.")
         return
+    if not len(ssn) == 10:
+        QMessageBox.information(self, "Registration Failed", "The SSN must be 10 characters long (no slash)")
+        return 
     # Check if the username or SSN already exists in the database
     customer_collection = self.database_manager.db["users"]
     existing_username = customer_collection.find_one({"username": username})

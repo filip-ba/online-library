@@ -3,6 +3,7 @@ from PyQt6.QtWidgets import (
 from database_manager import DatabaseManager
 from librarian.manage_books_tab import ManageBooksTab
 from librarian.manage_customers_tab import ManageCustomersTab
+from librarian.manage_confirmations_tab import ManageConfirmationsTab
 
 
 class LibrarianTab(QWidget):
@@ -18,8 +19,10 @@ class LibrarianTab(QWidget):
         self.tab_widget = QTabWidget(self)
         manage_books_tab = ManageBooksTab(self.database_manager, self.statusBar, self.signals)
         manage_customers_tab = ManageCustomersTab(self.database_manager, self.statusBar, self.signals)
+        manage_confirmations_tab = ManageConfirmationsTab(self.database_manager, self.statusBar, self.signals)
         self.tab_widget.addTab(manage_books_tab, "Manage Books")
         self.tab_widget.addTab(manage_customers_tab, "Manage Customers")
+        self.tab_widget.addTab(manage_confirmations_tab, "Manage Confirmations")
         main_layout.addWidget(self.tab_widget)
         self.setLayout(main_layout)
 

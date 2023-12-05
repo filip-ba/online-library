@@ -31,7 +31,7 @@ class LoginSignupTab(QWidget):
         # Layout for login_tab
         login_layout = QFormLayout(login_tab)
         login_title_label = QLabel("Log In", self)
-        login_title_label.setStyleSheet("font-size: 12pt; margin-bottom: 5px;")
+        login_title_label.setStyleSheet("font-size: 12pt; margin-bottom: 15px;")
         login_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         login_layout.addWidget(login_title_label)
         self.username_login = QLineEdit()
@@ -46,7 +46,7 @@ class LoginSignupTab(QWidget):
         # Layout for signup_tab
         signup_layout = QFormLayout(signup_tab)
         signup_title_label = QLabel("Sign Up", self)
-        signup_title_label.setStyleSheet("font-size: 12pt; margin-bottom: 5px;")
+        signup_title_label.setStyleSheet("font-size: 12pt; margin-bottom: 15px;")
         signup_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         signup_layout.addWidget(signup_title_label)
         self.username_signup = QLineEdit()
@@ -76,7 +76,10 @@ class LoginSignupTab(QWidget):
         signup_layout.addRow("SSN:", self.ssn_signup)
         signup_layout.addRow("Address:", self.address_signup)
         signup_layout.addRow("", self.signup_button)
-        # Add tabs to the login/signup tab widget
+        signup_layout.setContentsMargins(15, 15, 15, 15)
+        login_layout.setContentsMargins(15, 15, 15, 15)
+        signup_layout.setSpacing(10)
+        login_layout.setSpacing(10)
         login_signup_tabs.addTab(login_tab, "Login")
         login_signup_tabs.addTab(signup_tab, "Sign Up")
         login_signup_layout.addWidget(login_signup_tabs)
@@ -118,6 +121,8 @@ class LoginSignupTab(QWidget):
         self.signals.customer_tab_state.emit(False)     # Disabling widgets in the customer_tab
         self.signals.librarian_tab_state.emit(False)    # Disabling widgets in the librarian_tab
         self.signals.update_status.emit("Not logged in")
+        self.signals.update_status_bar_widget.emit("")  # Clear the status bar's widget after logging out
+        self.statusBar.clearMessage()
 
     def register_user(self):
         create_account(self, self.username_signup.text(), self.password_signup.text(), "Customer", self.first_name_signup.text(), self.last_name_signup.text(), self.ssn_signup.text(), self.address_signup.text(), self.statusBar)
