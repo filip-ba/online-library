@@ -6,6 +6,7 @@ from dialogs.add_book_dialog import AddBookDialog
 from shared_functions import display_book_catalog
 from shared_functions import advanced_search
 from shared_functions import sort_book_catalog
+from dialogs.edit_book_dialog import EditBookDialog
 
 
 class ManageBooksTab(QWidget):
@@ -21,9 +22,10 @@ class ManageBooksTab(QWidget):
         # Connects
         self.refresh_catalog_button.clicked.connect(lambda: self.display_books())
         self.advanced_search_button.clicked.connect(self.search_books)
-        self.cancel_button.clicked.connect(self.cancel_search_or_sort)
         self.sort_books_button.clicked.connect(self.sort_books)
+        self.cancel_button.clicked.connect(self.cancel_search_or_sort)
         self.add_book_button.clicked.connect(self.show_add_book_dialog)
+        self.edit_book_button.clicked.connect(self.show_edit_book_dialog)
         self.delete_book_button.clicked.connect(self.delete_selected_book)
 
     def init_librarian_tab(self):
@@ -105,8 +107,6 @@ class ManageBooksTab(QWidget):
         self.signals.update_status_bar_widget.emit("")
         self.display_books()
 
-
-
     def show_add_book_dialog(self):
         dialog = AddBookDialog()
         result = dialog.exec()
@@ -137,7 +137,61 @@ class ManageBooksTab(QWidget):
         books_collection.insert_one(new_book)
         self.display_books()
 
+    def show_edit_book_dialog(self):
+        selected_row = self.catalog_table.currentRow()
+        number_of_selected_rows = len(self.catalog_table.selectionModel().selectedRows())
+        if number_of_selected_rows == 1:
+            # Get title and author from the selected row
+            title = self.catalog_table.item(selected_row, 0).text()
+            author = self.catalog_table.item(selected_row, 1).text()
+            # Retrieve book data from the database based on title and author
+            books_collection = self.database_manager.db["books"]
+            query = {"title": title, "author": author}
+            book_data = books_collection.find_one(query)
+            dialog = EditBookDialog(book_data)
+            result = dialog.exec()
+        else:
+            return
+        if result == QDialog.DialogCode.Accepted:
+            pages_text = dialog.pages_input.text()
+            year_text = dialog.year_input.text()
+            items_text = dialog.items_input.text()
+            # Check if the fields are empty, and set default values if needed
+            pages = int(pages_text) if pages_text else 0
+            year = int(year_text) if year_text else 0
+            items = int(items_text) if items_text else 0
+            edited_data = {
+                "title": dialog.title_input.text(),
+                "author": dialog.author_input.text(),
+                "pages": pages,
+                "year": year,
+                "items": items,
+                "image_name": dialog.image_input.text()
+            }
+            # Validate that all fields are filled
+            if not all(edited_data.values()):
+                QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
+                return
+            # Call a function to update the book information
+            self.edit_book(book_data, edited_data)
 
+    def edit_book(self, old_data, new_data):
+        books_collection = self.database_manager.db["books"]
+        # Construct a query to find the book with old_data
+        query = {
+            "title": old_data["title"],
+            "author": old_data["author"],
+            "pages": old_data["pages"],
+            "year": old_data["year"],
+            "items": old_data["items"],
+            "image_name": old_data["image_name"]
+        }
+        # Set the new values
+        update_values = {"$set": new_data}
+        # Update the book with the new information
+        books_collection.update_one(query, update_values)
+        # Optionally, refresh the book catalog display
+        self.display_books()
 
     def delete_selected_book(self):
         selected_row = self.catalog_table.currentRow()

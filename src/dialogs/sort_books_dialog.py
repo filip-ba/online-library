@@ -1,4 +1,6 @@
-from PyQt6.QtWidgets import QDialog, QLabel, QComboBox, QRadioButton, QPushButton, QVBoxLayout, QHBoxLayout, QSpacerItem
+from PyQt6.QtWidgets import (
+    QDialog, QLabel, QComboBox, QRadioButton, 
+    QPushButton, QVBoxLayout, QHBoxLayout )
 from PyQt6.QtCore import Qt
 
 

@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QTabWidget, 
-    QFormLayout, QVBoxLayout, QTabWidget, QWidget, QMessageBox )
+    QFormLayout, QVBoxLayout, QTabWidget, QWidget, QMessageBox, QSpacerItem, QSizePolicy )
 from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator
 from PyQt6.QtCore import Qt, QRegularExpression
 import bcrypt  
@@ -30,6 +30,10 @@ class LoginSignupTab(QWidget):
         signup_tab = QWidget()
         # Layout for login_tab
         login_layout = QFormLayout(login_tab)
+        login_title_label = QLabel("Log In", self)
+        login_title_label.setStyleSheet("font-size: 12pt; margin-bottom: 5px;")
+        login_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        login_layout.addWidget(login_title_label)
         self.username_login = QLineEdit()
         self.password_login = QLineEdit()
         self.password_login.setEchoMode(QLineEdit.EchoMode.Password)
@@ -41,7 +45,8 @@ class LoginSignupTab(QWidget):
         login_layout.addRow("", self.logout_button)  # Added logout button
         # Layout for signup_tab
         signup_layout = QFormLayout(signup_tab)
-        signup_title_label = QLabel("Customer Registration", self)
+        signup_title_label = QLabel("Sign Up", self)
+        signup_title_label.setStyleSheet("font-size: 12pt; margin-bottom: 5px;")
         signup_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         signup_layout.addWidget(signup_title_label)
         self.username_signup = QLineEdit()

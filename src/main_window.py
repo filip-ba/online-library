@@ -12,12 +12,13 @@ class MainWindow(QMainWindow):
         self.database_manager = database_manager
         self.signals = AppSignals()
         self.setWindowTitle("Online Library Management System")
-        self.setGeometry(50, 50, 700, 600)
+        self.setGeometry(50, 50, 800, 650)
         # Create main widget and layout
         main_widget = QWidget(self)
         self.setCentralWidget(main_widget)
         main_layout = QVBoxLayout(main_widget)
         heading_label = QLabel("Library Management System", self)
+        heading_label.setStyleSheet("font-size: 16pt;")
         heading_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         main_layout.addWidget(heading_label)
         # Status bar to display login status
