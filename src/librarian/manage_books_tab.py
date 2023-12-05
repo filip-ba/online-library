@@ -153,23 +153,28 @@ class ManageBooksTab(QWidget):
         else:
             return
         if result == QDialog.DialogCode.Accepted:
+            title_text = dialog.title_input.text()
+            author_text = dialog.author_input.text()
             pages_text = dialog.pages_input.text()
             year_text = dialog.year_input.text()
             items_text = dialog.items_input.text()
-            # Check if the fields are empty, and set default values if needed
-            pages = int(pages_text) if pages_text else 0
-            year = int(year_text) if year_text else 0
-            items = int(items_text) if items_text else 0
+            image_name_text = dialog.image_input.text()
+            title = title_text if title_text else None
+            author = author_text if author_text else None
+            pages = int(pages_text) if pages_text else None
+            year = int(year_text) if year_text else None
+            items = int(items_text) if items_text else None
+            image_name = image_name_text if image_name_text else None
             edited_data = {
-                "title": dialog.title_input.text(),
-                "author": dialog.author_input.text(),
+                "title": title,
+                "author": author,
                 "pages": pages,
                 "year": year,
                 "items": items,
-                "image_name": dialog.image_input.text()
+                "image_name": image_name
             }
             # Validate that all fields are filled
-            if not all(edited_data.values()):
+            if None in edited_data.values():
                 QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
                 return
             # Call a function to update the book information

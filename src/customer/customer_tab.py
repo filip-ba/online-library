@@ -254,7 +254,7 @@ class CustomerTab(QWidget):
 
     def add_to_user_history(self, title, author, event_date):
         # Add the book information into the user's history
-        history_collection = self.database_manager.db["history"]
+        history_collection = self.database_manager.db["customer_history"]
         history_entry = {
             "username": GlobalState.current_user,
             "title": title,

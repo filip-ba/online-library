@@ -81,7 +81,7 @@ def display_book_catalog(self, catalog_table, cursor=None):
 
 def display_book_history(self, history_table):
     # Display the user's book history in the history_table
-    history_collection = self.database_manager.db["history"]
+    history_collection = self.database_manager.db["customer_history"]
     user_history = history_collection.find({"username": GlobalState.current_user})
     history_table.setRowCount(0)
     for index, history_entry in enumerate(user_history):
