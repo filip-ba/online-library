@@ -31,11 +31,12 @@ class ManageBooksTab(QWidget):
     def init_librarian_tab(self):
         self.display_books()
 
-    def set_tab_state(self, state):
+    def set_tab_state(self, state, state_2):
         # Disable/enable widgets in customer_tab depending on whether the user is logged in or not
         self.advanced_search_button.setEnabled(state)
         self.sort_books_button.setEnabled(state)
-        self.cancel_button.setEnabled(state)
+        self.cancel_button.setEnabled(state_2)
+        self.refresh_catalog_button.setEnabled(state)
         self.add_book_button.setEnabled(state)
         self.edit_book_button.setEnabled(state)
         self.delete_book_button.setEnabled(state)
@@ -53,7 +54,7 @@ class ManageBooksTab(QWidget):
         self.advanced_search_button.setEnabled(False)
         self.sort_books_button = QPushButton("Open Sort Options")
         self.sort_books_button.setEnabled(False)
-        self.cancel_button = QPushButton("Cancel Search/Sort")
+        self.cancel_button = QPushButton("Cancel Selected Filters")
         self.cancel_button.setEnabled(False)
         self.refresh_catalog_button = QPushButton("Refresh Catalog")
         self.refresh_catalog_button.setEnabled(False)

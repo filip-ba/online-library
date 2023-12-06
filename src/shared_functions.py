@@ -89,15 +89,18 @@ def display_book_history(self, history_table):
     history_table.setRowCount(0)
     for index, history_entry in enumerate(user_history):
         history_table.insertRow(index)
+        # Retrieve book information from the history entry
+        title = history_entry.get("title", "")
+        author = history_entry.get("author", "")
+        pages = history_entry.get("pages", "")
+        year = history_entry.get("year", "")
+        image_name = history_entry.get("image_name", "")
+        # Display book information in the corresponding columns
         for col, prop in enumerate(["title", "author", "pages", "year"]):
-            # Retrieve book information from the "books" collection
-            books_collection = self.database_manager.db["books"]
-            book_query = {"title": history_entry["title"], "author": history_entry["author"]}
-            book = books_collection.find_one(book_query)
-            history_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
+            history_table.setItem(index, col, QTableWidgetItem(str(history_entry.get(prop, ""))))
         # Display book cover image
         cover_label = QLabel()
-        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}.png")
+        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}.png")
         if os.path.exists(cover_path):
             pixmap = QPixmap(cover_path)
             scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)

@@ -71,9 +71,9 @@ class AppSignals(QObject):
     update_status = pyqtSignal(str)
     update_status_bar_widget = pyqtSignal(str)
     update_tab_widget = pyqtSignal(int)
-    customer_tab_state = pyqtSignal(bool)
+    customer_tab_state = pyqtSignal(bool, bool)
     customer_logged_in = pyqtSignal()
-    librarian_tab_state = pyqtSignal(bool)
+    librarian_tab_state = pyqtSignal(bool, bool)
     librarian_logged_in = pyqtSignal()
 
 

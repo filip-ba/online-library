@@ -103,23 +103,25 @@ class LoginSignupTab(QWidget):
             GlobalState.current_user = username
             GlobalState.current_role = user_role
             self.signals.update_status.emit(f"Logged in as {GlobalState.current_user} with role {GlobalState.current_role}")
+            self.username_login.setText("")
+            self.password_login.setText("")
             self.update_tab_access()
 
     def update_tab_access(self):
         if GlobalState.current_role == "Customer":
             self.signals.update_tab_widget.emit(2)      # Sets the current tab to the customer_tab
-            self.signals.customer_tab_state.emit(True)  # Enables the widgets
+            self.signals.customer_tab_state.emit(True, False)   # Enables the widgets
             self.signals.customer_logged_in.emit()      # Initiates the logged in customer(Loads all the tables and personal info)
         elif GlobalState.current_role == "Librarian":
             self.signals.update_tab_widget.emit(1)      
-            self.signals.librarian_tab_state.emit(True) 
+            self.signals.librarian_tab_state.emit(True, False) 
             self.signals.librarian_logged_in.emit()
 
     def logout(self):
         GlobalState.current_user = None
         GlobalState.current_role = None
-        self.signals.customer_tab_state.emit(False)     # Disabling widgets in the customer_tab
-        self.signals.librarian_tab_state.emit(False)    # Disabling widgets in the librarian_tab
+        self.signals.customer_tab_state.emit(False, False)     # Disabling widgets in the customer_tab
+        self.signals.librarian_tab_state.emit(False, False)    # Disabling widgets in the librarian_tab
         self.signals.update_status.emit("Not logged in")
         self.signals.update_status_bar_widget.emit("")  # Clear the status bar's widget after logging out
         self.statusBar.clearMessage()

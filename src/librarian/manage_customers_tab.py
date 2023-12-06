@@ -32,7 +32,7 @@ class ManageCustomersTab(QWidget):
         search_sort_layout = QVBoxLayout(group_box_1)
         search_button = QPushButton("Open Search")
         sort_button = QPushButton("Open Sort Options")
-        cancel_button = QPushButton("Cancel Search/Sort")
+        cancel_button = QPushButton("Cancel Selected Filters")
         refresh_button = QPushButton("Refresh List")
         search_sort_layout.addWidget(search_button)
         search_sort_layout.addWidget(sort_button)

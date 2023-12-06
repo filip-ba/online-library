@@ -42,6 +42,21 @@ class CustomerTab(QWidget):
         self.display_borrowed_books()
         self.display_history()
 
+    def set_tab_state(self, state, state_2):
+        # Disable/enable widgets in customer_tab depending on whether the user is logged in or not
+        self.advanced_search_button.setEnabled(state)
+        self.sort_books_button.setEnabled(state)
+        self.refresh_catalog_button.setEnabled(state)
+        self.cancel_button.setEnabled(state_2)
+        self.borrow_button.setEnabled(state)
+        self.return_button.setEnabled(state)
+        self.edit_profile_button.setEnabled(state)
+        self.tab_widget.setEnabled(state)
+        if state == False: 
+            self.catalog_table.setRowCount(0)    # Clearing the content of the book catalog
+            self.borrowed_books_table.setRowCount(0) 
+            self.tab_widget.setCurrentIndex(0)    # Displaying the catalog tab
+
     def update_borrowed_books(self):
         self.display_borrowed_books()
 
@@ -54,7 +69,7 @@ class CustomerTab(QWidget):
         self.advanced_search_button.setEnabled(False)
         self.sort_books_button = QPushButton("Open Sort Options")
         self.sort_books_button.setEnabled(False)
-        self.cancel_button = QPushButton("Cancel Search/Sort")
+        self.cancel_button = QPushButton("Cancel Selected Filters")
         self.cancel_button.setEnabled(False)
         self.refresh_catalog_button = QPushButton("Refresh Catalog")
         self.refresh_catalog_button.setEnabled(False)
@@ -120,20 +135,6 @@ class CustomerTab(QWidget):
         layout.addLayout(bottom_layout)
         self.setLayout(layout)
 
-    def set_tab_state(self, state):
-        # Disable/enable widgets in customer_tab depending on whether the user is logged in or not
-        self.advanced_search_button.setEnabled(state)
-        self.sort_books_button.setEnabled(state)
-        self.edit_profile_button.setEnabled(state)
-        self.borrow_button.setEnabled(state)
-        self.return_button.setEnabled(state)
-        self.refresh_catalog_button.setEnabled(state)
-        self.tab_widget.setEnabled(state)
-        if state == False: 
-            self.catalog_table.setRowCount(0)    # Clearing the content of the book catalog
-            self.borrowed_books_table.setRowCount(0) 
-            self.tab_widget.setCurrentIndex(0)    # Displaying the catalog tab
-
     def display_books(self, cursor=None):
         display_book_catalog(self, self.catalog_table, cursor)
 
@@ -196,8 +197,14 @@ class CustomerTab(QWidget):
         update_query = {"$inc": {"items": -1}}
         books_collection.update_one(book_query, update_query)
         self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 5000)
+        # Get the book informatio
+        book = books_collection.find_one(book_query)
+        pages = book.get("pages", "")
+        year = book.get("year", "")
+        image_name = book.get("image_name", "")
+        print(image_name)
         # Add the book to the user's history
-        self.add_to_user_history(title, author, borrowed_date)
+        self.add_to_user_history(title, author, pages, year, borrowed_date, image_name)
         # Refresh the borrowed books table
         self.display_borrowed_books()
         # Refresh the book history table
@@ -261,14 +268,17 @@ class CustomerTab(QWidget):
                 self.borrowed_books_table.setItem(index, 6, QTableWidgetItem(formatted_expiry_date))
         self.borrowed_books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
-    def add_to_user_history(self, title, author, event_date):
+    def add_to_user_history(self, title, author, pages, year, event_date, image_name):
         # Add the book information into the user's history
         history_collection = self.database_manager.db["customer_history"]
         history_entry = {
             "username": GlobalState.current_user,
             "title": title,
             "author": author,
-            "event_date": event_date
+            "pages": pages,
+            "year": year,
+            "event_date": event_date,
+            "image_name": image_name
         }
         history_collection.insert_one(history_entry)
 
