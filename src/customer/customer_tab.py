@@ -179,6 +179,13 @@ class CustomerTab(QWidget):
         title = self.catalog_table.item(selected_row, 0).text()
         author = self.catalog_table.item(selected_row, 1).text()
         username = GlobalState.current_user
+        # Get the book information
+        books_collection = self.database_manager.db["books"]
+        book_query = {"title": title, "author": author}
+        book = books_collection.find_one(book_query)
+        pages = book.get("pages", "")
+        year = book.get("year", "")
+        image_name = book.get("image_name", "")
         # Insert a document into the 'borrowed_books' collection
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         borrowed_date = datetime.now(timezone.utc)
@@ -186,23 +193,18 @@ class CustomerTab(QWidget):
         borrowed_book = {
             "username": username,
             "title": title,
-            "author" : author,
+            "author": author,
+            "pages": pages,
+            "year": year,
+            "image_name": image_name,
             "borrowed_date": borrowed_date,
             "expiry_date": expiry_date
         }
         borrowed_books_collection.insert_one(borrowed_book)
         # Update the 'items' field in the 'books' collection (decrement by 1)
-        books_collection = self.database_manager.db["books"]
-        book_query = {"title": title, "author": author}
         update_query = {"$inc": {"items": -1}}
         books_collection.update_one(book_query, update_query)
-        self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 5000)
-        # Get the book informatio
-        book = books_collection.find_one(book_query)
-        pages = book.get("pages", "")
-        year = book.get("year", "")
-        image_name = book.get("image_name", "")
-        print(image_name)
+        self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 10000)
         # Add the book to the user's history
         self.add_to_user_history(title, author, pages, year, borrowed_date, image_name)
         # Refresh the borrowed books table
@@ -238,34 +240,31 @@ class CustomerTab(QWidget):
         user_borrowed_books = borrowed_books_collection.find({"username": GlobalState.current_user})
         self.borrowed_books_table.setRowCount(0)
         for index, borrowed_book in enumerate(user_borrowed_books):
-                books_collection = self.database_manager.db["books"]
-                book_query = {"title": borrowed_book["title"], "author": borrowed_book["author"]}
-                book = books_collection.find_one(book_query)
-                # Insert a new row into the table
-                self.borrowed_books_table.insertRow(index)
-                # Display book information in the table
-                for col, prop in enumerate(["title", "author", "pages", "year"]):
-                    self.borrowed_books_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
-                cover_label = QLabel()
-                cover_path = os.path.join(Path(__file__).resolve().parent.parent.parent, "book_covers", f"{book['image_name']}.png")
-                if os.path.exists(cover_path):
-                    pixmap = QPixmap(cover_path)
-                    scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                    cover_label.setPixmap(scaled_pixmap)
-                    self.borrowed_books_table.setRowHeight(index, scaled_pixmap.height())
-                    cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                    self.borrowed_books_table.setCellWidget(index, 4, cover_label)
-                else:
-                    placeholder_label = QLabel("No Image")
-                    self.borrowed_books_table.setCellWidget(index, 4, placeholder_label)
-                # Display the borrowed date in the sixth column
-                borrowed_date = borrowed_book["borrowed_date"]
-                formatted_borrowed_date = datetime.strftime(borrowed_date, "%d/%m/%Y, %H:%M")
-                self.borrowed_books_table.setItem(index, 5, QTableWidgetItem(formatted_borrowed_date))
-                # Display the expiration date in the seventh column
-                expiry_date = borrowed_book["expiry_date"]
-                formatted_expiry_date = datetime.strftime(expiry_date, "%d/%m/%Y, %H:%M")
-                self.borrowed_books_table.setItem(index, 6, QTableWidgetItem(formatted_expiry_date))
+            # Insert a new row into the table
+            self.borrowed_books_table.insertRow(index)
+            # Display book information in the table
+            for col, prop in enumerate(["title", "author", "pages", "year"]):
+                self.borrowed_books_table.setItem(index, col, QTableWidgetItem(str(borrowed_book[prop])))
+            cover_label = QLabel()
+            cover_path = os.path.join(Path(__file__).resolve().parent.parent.parent, "book_covers", f"{borrowed_book['image_name']}")
+            if os.path.exists(cover_path):
+                pixmap = QPixmap(cover_path)
+                scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                cover_label.setPixmap(scaled_pixmap)
+                self.borrowed_books_table.setRowHeight(index, scaled_pixmap.height())
+                cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                self.borrowed_books_table.setCellWidget(index, 4, cover_label)
+            else:
+                placeholder_label = QLabel("No Image")
+                self.borrowed_books_table.setCellWidget(index, 4, placeholder_label)
+            # Display the borrowed date in the sixth column
+            borrowed_date = borrowed_book["borrowed_date"]
+            formatted_borrowed_date = datetime.strftime(borrowed_date, "%d/%m/%Y, %H:%M")
+            self.borrowed_books_table.setItem(index, 5, QTableWidgetItem(formatted_borrowed_date))
+            # Display the expiration date in the seventh column
+            expiry_date = borrowed_book["expiry_date"]
+            formatted_expiry_date = datetime.strftime(expiry_date, "%d/%m/%Y, %H:%M")
+            self.borrowed_books_table.setItem(index, 6, QTableWidgetItem(formatted_expiry_date))
         self.borrowed_books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
     def add_to_user_history(self, title, author, pages, year, event_date, image_name):
@@ -314,7 +313,7 @@ class CustomerTab(QWidget):
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         return_query = {"username": GlobalState.current_user, "title": title, "author": author}
         borrowed_books_collection.delete_one(return_query)
-        self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 5000)
+        self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 10000)
         self.display_borrowed_books()
 
     def search_books(self):

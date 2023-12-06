@@ -48,10 +48,9 @@ def create_account(self, username, password, role, first_name, last_name, ssn, a
         customer_collection.insert_one(new_customer)
         QMessageBox.information(self, "Customer registered", "Registration was successful. Waiting for approval.")
         # Show informational message in the status bar
-        statusBar.showMessage(f"Registration successful. Waiting for librarian approval.", 5000)
+        statusBar.showMessage(f"Registration successful. Waiting for librarian approval.", 10000)
 
 def display_book_catalog(self, catalog_table, cursor=None):
-    display_image = False
     if cursor is None:
         books_collection = self.database_manager.db["books"]
         cursor = books_collection.find()
@@ -66,19 +65,8 @@ def display_book_catalog(self, catalog_table, cursor=None):
         # Display book cover image
         cover_label = QLabel()
         # Construct the absolute path to the book cover image
-        cover_path_1 = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}.png")
-        cover_path_2 = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}.jpg")
-        # Check if the file exists before attempting to load
-        if os.path.exists(cover_path_1):
-            display_image = True
-            cover_path = cover_path_1
-        elif os.path.exists(cover_path_2):
-            display_image = True
-            cover_path = cover_path_2
-        else:
-            display_image = False
-        if display_image == True:
-            display_image = False
+        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}")
+        if os.path.exists(cover_path):
             pixmap = QPixmap(cover_path)
             scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
             cover_label.setPixmap(scaled_pixmap)
@@ -106,7 +94,7 @@ def display_book_history(self, history_table):
             history_table.setItem(index, col, QTableWidgetItem(str(history_entry.get(prop, ""))))
         # Display book cover image
         cover_label = QLabel()
-        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}.png")
+        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}")
         if os.path.exists(cover_path):
             pixmap = QPixmap(cover_path)
             scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
@@ -150,7 +138,7 @@ def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_but
             cursor = books_collection.find(query)
             display_book_catalog(self, catalog_table, cursor)
         else:
-            statusBar.showMessage("The minimum character length required for searching is 3.", 7000)
+            statusBar.showMessage("The minimum character length required for searching is 3.", 10000)
             return 
 
 def sort_book_catalog(self, signals, catalog_table, refresh_catalog_button, cancel_button):

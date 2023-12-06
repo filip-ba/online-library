@@ -13,7 +13,10 @@ class AddBookDialog(QDialog):
         # Connects
         self.ok_button.clicked.connect(self.accept)
         self.cancel_button.clicked.connect(self.reject)
-        
+        # Variables for importing images
+        self.image_name = ""
+        self.path_name = ""
+
     def create_dialog_ui(self):
         self.setWindowTitle("Add New Book")
         self.setFixedSize(500, 300)    
@@ -55,14 +58,13 @@ class AddBookDialog(QDialog):
         self.items_input.setMaxLength(2)
         form_layout.addRow(items_label, self.items_input)
         # Import Image
-        self.image_name = ""
         import_layout_1 = QHBoxLayout()
         import_layout_2 = QHBoxLayout()
         import_layout_2.setContentsMargins(5, 0, 0, 0)
         import_layout_1.setContentsMargins(0, 0, 0, 10)
         self.image_name_label = QLabel("File: ")
         self.import_button = QPushButton("Import Image")
-        self.image_name_label.setToolTip("Only accepts png and jpg files.")
+        self.image_name_label.setToolTip("Only accepts png, jpg and bmp files.")
         self.import_image_label = QLabel("Image: ")
         import_layout_1.addWidget(self.import_image_label)
         import_layout_2.addWidget(self.import_button)
@@ -87,9 +89,9 @@ class AddBookDialog(QDialog):
         self.setLayout(layout)
 
     def get_image_name(self):
-        self.file_name, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg)")
-        if self.file_name:
-            self.image_name = QFileInfo(self.file_name).fileName()
+        self.path_name, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg *.bmp)")
+        if self.path_name:
+            self.image_name = QFileInfo(self.path_name).fileName()
             self.image_name_label.setText(f"File: {self.image_name}")
         else:
             return

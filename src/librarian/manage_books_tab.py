@@ -126,20 +126,20 @@ class ManageBooksTab(QWidget):
             pages = dialog.pages_input.text()
             year = dialog.year_input.text()
             items = dialog.items_input.text()
-            full_image_name = dialog.image_name
+            full_image_name = dialog.path_name
+            image_name = dialog.image_name 
             # Validate that all fields are filled
-            if not title or not author or not pages or not year or not items or not full_image_name:
+            if not title or not author or not pages or not year or not items or not image_name:
                 QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
                 return
-            image_name, _ = os.path.splitext(os.path.basename(full_image_name))
-            if all([title, author, pages, year, items, image_name]):
+            else:
                 destination_folder = Path(__file__).resolve().parent.parent.parent / "book_covers"
-                destination_path = str(destination_folder / full_image_name)
+                destination_path = str(destination_folder / os.path.basename(full_image_name))
                 if os.path.exists(destination_path):
                     QMessageBox.warning(self, "File Exists", "An image with the same name already exists. Please choose a different name.")
                     return
                 else:
-                    shutil.copy(str(dialog.file_name), destination_path)
+                    shutil.copy(full_image_name, destination_path)
                     self.add_new_book(title, author, pages, year, items, image_name)
 
     def add_new_book(self, title, author, pages, year, items, image_name):
@@ -153,7 +153,7 @@ class ManageBooksTab(QWidget):
             "image_name": image_name
         }
         books_collection.insert_one(new_book)
-        self.statusBar.showMessage(f"You have added a book '{title}' by {author}.", 7000)
+        self.statusBar.showMessage(f"You have added a book '{title}' by {author}.", 10000)
         self.display_books()
 
     def show_edit_book_dialog(self):
@@ -197,7 +197,7 @@ class ManageBooksTab(QWidget):
                 QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
                 return
             # Show a status bar message
-            self.statusBar.showMessage(f"You have edited '{current_title}' by {current_author}.", 7000)
+            self.statusBar.showMessage(f"You have edited '{current_title}' by {current_author}.", 10000)
             # Call a function to update the book information
             self.edit_book(book_data, edited_data)
 
@@ -244,17 +244,10 @@ class ManageBooksTab(QWidget):
         # Delete the book from the 'books' collection
         books_collection = self.database_manager.db["books"]
         book_query = {"title": title, "author": author} 
-        book = books_collection.find_one(book_query)
-        if book and "image_name" in book:
-            image_name = book["image_name"]
-            # Delete the corresponding book cover image
-            image_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}.png")
-            if os.path.exists(image_path):
-                os.remove(image_path)
-            self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 7000)
-            books_collection.delete_one(book_query)
-            self.display_books()
-
+        self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 7000)
+        books_collection.delete_one(book_query)
+        self.display_books()
+           
     def is_book_borrowed(self, title, author):
         # Check if the book is in the borrowed_books collection
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
