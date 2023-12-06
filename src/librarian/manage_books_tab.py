@@ -1,6 +1,9 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, 
       QHBoxLayout, QTableWidget, QDialog, QHeaderView )
+from pathlib import Path
+import shutil
+import os
 from database_manager import DatabaseManager
 from dialogs.add_book_dialog import AddBookDialog
 from shared_functions import display_book_catalog
@@ -123,12 +126,21 @@ class ManageBooksTab(QWidget):
             pages = dialog.pages_input.text()
             year = dialog.year_input.text()
             items = dialog.items_input.text()
-            image_name = dialog.image_input.text()
+            full_image_name = dialog.image_name
             # Validate that all fields are filled
-            if not title or not author or not pages or not year or not items or not image_name:
+            if not title or not author or not pages or not year or not items or not full_image_name:
                 QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
                 return
-            self.add_new_book(title, author, pages, year, items, image_name)
+            image_name, _ = os.path.splitext(os.path.basename(full_image_name))
+            if all([title, author, pages, year, items, image_name]):
+                destination_folder = Path(__file__).resolve().parent.parent.parent / "book_covers"
+                destination_path = str(destination_folder / full_image_name)
+                if os.path.exists(destination_path):
+                    QMessageBox.warning(self, "File Exists", "An image with the same name already exists. Please choose a different name.")
+                    return
+                else:
+                    shutil.copy(str(dialog.file_name), destination_path)
+                    self.add_new_book(title, author, pages, year, items, image_name)
 
     def add_new_book(self, title, author, pages, year, items, image_name):
         books_collection = self.database_manager.db["books"]
@@ -231,10 +243,17 @@ class ManageBooksTab(QWidget):
     def delete_book(self, title, author):
         # Delete the book from the 'books' collection
         books_collection = self.database_manager.db["books"]
-        book_query = {"title": title, "author": author}
-        books_collection.delete_one(book_query)
-        self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 7000)
-        self.display_books()
+        book_query = {"title": title, "author": author} 
+        book = books_collection.find_one(book_query)
+        if book and "image_name" in book:
+            image_name = book["image_name"]
+            # Delete the corresponding book cover image
+            image_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}.png")
+            if os.path.exists(image_path):
+                os.remove(image_path)
+            self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 7000)
+            books_collection.delete_one(book_query)
+            self.display_books()
 
     def is_book_borrowed(self, title, author):
         # Check if the book is in the borrowed_books collection

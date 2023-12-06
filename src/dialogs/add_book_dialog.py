@@ -1,8 +1,9 @@
 from PyQt6.QtWidgets import ( 
     QDialog, QLabel, QLineEdit, QPushButton, QSpacerItem, 
-    QHBoxLayout, QVBoxLayout, QFormLayout )
-from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator, QFont
-from PyQt6.QtCore import Qt, QRegularExpression
+    QHBoxLayout, QVBoxLayout, QFormLayout, QFileDialog, QWidget )
+from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator
+from PyQt6.QtCore import Qt, QRegularExpression, QFileInfo
+from PyQt6.QtWidgets import QFileDialog
 
 
 class AddBookDialog(QDialog):
@@ -12,7 +13,7 @@ class AddBookDialog(QDialog):
         # Connects
         self.ok_button.clicked.connect(self.accept)
         self.cancel_button.clicked.connect(self.reject)
-
+        
     def create_dialog_ui(self):
         self.setWindowTitle("Add New Book")
         self.setFixedSize(500, 300)    
@@ -53,16 +54,28 @@ class AddBookDialog(QDialog):
         self.items_input.setValidator(QIntValidator())  
         self.items_input.setMaxLength(2)
         form_layout.addRow(items_label, self.items_input)
-        # Image Name
-        image_label = QLabel("Image Name:")
-        self.image_input = QLineEdit()
-        self.image_input.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9]+")))
-        self.image_input.setMaxLength(60)
-        form_layout.addRow(image_label, self.image_input)
-        # Adding the form layout to the vertical layout
+        # Import Image
+        self.image_name = ""
+        import_layout_1 = QHBoxLayout()
+        import_layout_2 = QHBoxLayout()
+        import_layout_2.setContentsMargins(5, 0, 0, 0)
+        import_layout_1.setContentsMargins(0, 0, 0, 10)
+        self.image_name_label = QLabel("File: ")
+        self.import_button = QPushButton("Import Image")
+        self.image_name_label.setToolTip("Only accepts png and jpg files.")
+        self.import_image_label = QLabel("Image: ")
+        import_layout_1.addWidget(self.import_image_label)
+        import_layout_2.addWidget(self.import_button)
+        import_layout_2.addWidget(self.image_name_label)
+        import_layout_1.addLayout(import_layout_2)
+        import_layout_1.setAlignment(Qt.AlignmentFlag.AlignLeft)
+        self.import_button.clicked.connect(self.get_image_name)
+        # Adding the form layout 
         form_layout.setSpacing(10)  # Adding a space between the forms
         layout.addLayout(form_layout)
         layout.addSpacerItem(QSpacerItem(10, 10))   # Adding a space after the form layout
+        # Adding the image import layout
+        layout.addLayout(import_layout_1)
         # Buttons
         button_layout = QHBoxLayout()
         self.ok_button = QPushButton("Ok")
@@ -72,3 +85,12 @@ class AddBookDialog(QDialog):
         layout.addLayout(button_layout)
         # Set the layout
         self.setLayout(layout)
+
+    def get_image_name(self):
+        self.file_name, _ = QFileDialog.getOpenFileName(self, "Select Image", "", "Images (*.png *.jpg)")
+        if self.file_name:
+            self.image_name = QFileInfo(self.file_name).fileName()
+            self.image_name_label.setText(f"File: {self.image_name}")
+        else:
+            return
+ 
