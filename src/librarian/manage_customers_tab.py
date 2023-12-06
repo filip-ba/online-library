@@ -1,9 +1,11 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QComboBox, QListView, QSpacerItem, QSizePolicy,  
-      QInputDialog, QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QLineEdit, QGroupBox, QHeaderView )
+      QInputDialog, QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from database_manager import DatabaseManager
+from shared_functions import create_account
+from dialogs.registration_dialog import RegistrationDialog
 
 
 class ManageCustomersTab(QWidget):
@@ -13,7 +15,18 @@ class ManageCustomersTab(QWidget):
         self.signals = signals
         self.statusBar = statusBar
         self.create_tab_ui()
+        # Singals
+        self.signals.librarian_tab_state.connect(self.set_tab_state)
+        self.signals.librarian_logged_in.connect(self.init_librarian_tab)
         # Connects
+        self.refresh_button.clicked.connect(self.display_customers)
+        self.add_account_button.clicked.connect(self.register_user)
+
+    def init_librarian_tab(self):
+        self.display_customers()
+
+    def set_tab_state(self, state, state_2):
+        pass
 
     def create_tab_ui(self):
         # Layouts
@@ -30,14 +43,14 @@ class ManageCustomersTab(QWidget):
         # Search and Sort Layout
         group_box_1 = QGroupBox("Search/Sort Actions")
         search_sort_layout = QVBoxLayout(group_box_1)
-        search_button = QPushButton("Open Search")
-        sort_button = QPushButton("Open Sort Options")
-        cancel_button = QPushButton("Cancel Selected Filters")
-        refresh_button = QPushButton("Refresh List")
-        search_sort_layout.addWidget(search_button)
-        search_sort_layout.addWidget(sort_button)
-        search_sort_layout.addWidget(cancel_button)
-        search_sort_layout.addWidget(refresh_button)
+        self.search_button = QPushButton("Open Search")
+        self.sort_button = QPushButton("Open Sort Options")
+        self.cancel_button = QPushButton("Cancel Selected Filters")
+        self.refresh_button = QPushButton("Refresh List")
+        search_sort_layout.addWidget(self.search_button)
+        search_sort_layout.addWidget(self.sort_button)
+        search_sort_layout.addWidget(self.cancel_button)
+        search_sort_layout.addWidget(self.refresh_button)
         # QTableWidget for Customer Accounts
         self.customers_table = QTableWidget()
         self.tab_widget = QTabWidget()
@@ -52,23 +65,23 @@ class ManageCustomersTab(QWidget):
         # GroupBox for Borrowed Books, Show History, Assign Book, Remove Book
         group_box_3 = QGroupBox("Books Actions")
         books_actions_layout = QVBoxLayout(group_box_3)
-        show_borrowed_button = QPushButton("Show Borrowed Books")
-        show_history_button = QPushButton("Show Customer History")
-        assign_book_button = QPushButton("Assign a Book")
-        remove_book_button = QPushButton("Remove Book")
-        books_actions_layout.addWidget(show_borrowed_button)
-        books_actions_layout.addWidget(show_history_button)
-        books_actions_layout.addWidget(assign_book_button)
-        books_actions_layout.addWidget(remove_book_button)
+        self.show_borrowed_button = QPushButton("Show Borrowed Books")
+        self.show_history_button = QPushButton("Show Customer History")
+        self.assign_book_button = QPushButton("Assign a Book")
+        self.remove_book_button = QPushButton("Remove Book")
+        books_actions_layout.addWidget(self.show_borrowed_button)
+        books_actions_layout.addWidget(self.show_history_button)
+        books_actions_layout.addWidget(self.assign_book_button)
+        books_actions_layout.addWidget(self.remove_book_button)
         # GroupBox for Add Account, Edit Account, Ban Account
         group_box_4 = QGroupBox("Account Actions")
         account_actions_layout = QVBoxLayout(group_box_4)
-        add_account_button = QPushButton("Add Account")
-        edit_account_button = QPushButton("Edit Account")
-        ban_account_button = QPushButton("Ban Account")
-        account_actions_layout.addWidget(add_account_button)
-        account_actions_layout.addWidget(edit_account_button)
-        account_actions_layout.addWidget(ban_account_button)
+        self.add_account_button = QPushButton("Add Account")
+        self.edit_account_button = QPushButton("Edit Account")
+        self.ban_account_button = QPushButton("Ban Account")
+        account_actions_layout.addWidget(self.add_account_button)
+        account_actions_layout.addWidget(self.edit_account_button)
+        account_actions_layout.addWidget(self.ban_account_button)
         # Set max height
         group_box_2.setMaximumHeight(100)
         # Add widgets to main layout
@@ -84,3 +97,22 @@ class ManageCustomersTab(QWidget):
         main_layout.addLayout(left_layout)
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)
+        
+    def display_customers(self):
+        users_collection = self.database_manager.db["users"]
+        # Query customers based on the role
+        customer_query = {"role": "Customer"}
+        customer_data = users_collection.find(customer_query)
+        self.customers_table.setRowCount(0)
+        for index, customer in enumerate(customer_data):
+            self.customers_table.insertRow(index)
+            for col, prop in enumerate(["username", "first_name", "last_name", "ssn", "address"]):
+                self.customers_table.setItem(index, col, QTableWidgetItem(str(customer[prop])))
+        self.customers_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+    def register_user(self):
+        dialog = RegistrationDialog()
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            create_account(self, dialog.username_signup.text(), dialog.password_signup.text(), "Librarian", dialog.first_name_signup.text(), dialog.last_name_signup.text(), dialog.ssn_signup.text(), dialog.address_signup.text(), self.statusBar)
+            self.display_customers()

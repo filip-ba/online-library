@@ -13,7 +13,7 @@ from dialogs.sort_books_dialog import SortBooksDialog
 
 def create_account(self, username, password, role, first_name, last_name, ssn, address, statusBar):
     # Check if anybody is logged in
-    if not GlobalState.current_user == None:
+    if role == "Customer" and not GlobalState.current_user == None:
         QMessageBox.information(self, "Registration Failed", "You must be logged out before registering.")
         return
     # Check if any required field is empty
@@ -24,31 +24,36 @@ def create_account(self, username, password, role, first_name, last_name, ssn, a
         QMessageBox.information(self, "Registration Failed", "The SSN must be 10 characters long (no slash)")
         return 
     # Check if the username or SSN already exists in the database
+    inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
     customer_collection = self.database_manager.db["users"]
     existing_username = customer_collection.find_one({"username": username})
     existing_ssn = customer_collection.find_one({"ssn": ssn})
-    if existing_username and existing_ssn:
+    existing_inactivated_username = inactivated_accounts_collection.find_one({"username": username})
+    existing_inactivated_ssn = inactivated_accounts_collection.find_one({"ssn": ssn})
+    if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn):
         QMessageBox.information(self, "Registration Failed", "Username and birth number already exist.")
-    elif existing_username:
+    elif existing_username or existing_inactivated_username :
         QMessageBox.information(self, "Registration Failed", "Username already exists.")
-    elif existing_ssn:
+    elif existing_ssn or existing_inactivated_ssn:
         QMessageBox.information(self, "Registration Failed", "Birth number already exists.")
     else:
-        # Save the new customer into the users collection
         new_customer = {
             "username": username,
             "password": str(bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()), 'utf-8'),  
-            "role": role,
+            "role": "Customer",
             "first_name": first_name,
             "last_name": last_name,
             "ssn": ssn,
             "address": address,
-            "acc_activated": False,  
         }
-        customer_collection.insert_one(new_customer)
-        QMessageBox.information(self, "Customer registered", "Registration was successful. Waiting for approval.")
-        # Show informational message in the status bar
-        statusBar.showMessage(f"Registration successful. Waiting for librarian approval.", 10000)
+        if role == "Customer":
+            inactivated_accounts_collection.insert_one(new_customer)
+            QMessageBox.information(self, "Customer registered", "Registration was successful. Waiting for approval.")
+            statusBar.showMessage(f"Registration successful. Waiting for librarian approval.", 10000)
+        else:
+            customer_collection.insert_one(new_customer)
+            QMessageBox.information(self, "Customer registered", "Registration was successful.")
+            statusBar.showMessage(f"Registration successful.", 10000)
 
 def display_book_catalog(self, catalog_table, cursor=None):
     if cursor is None:

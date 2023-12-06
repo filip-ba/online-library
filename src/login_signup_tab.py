@@ -50,23 +50,23 @@ class LoginSignupTab(QWidget):
         signup_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         signup_layout.addWidget(signup_title_label)
         self.username_signup = QLineEdit()
-        self.username_signup.setMaxLength(30)
+        self.username_signup.setMaxLength(40)
         self.username_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9,.-_]+")))
         self.password_signup = QLineEdit()
-        self.password_signup.setMaxLength(30)
+        self.password_signup.setMaxLength(40)
         self.password_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[^\\s]+")))
         self.password_signup.setEchoMode(QLineEdit.EchoMode.Password)
         self.first_name_signup = QLineEdit()
-        self.first_name_signup.setMaxLength(30)
+        self.first_name_signup.setMaxLength(40)
         self.first_name_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]+")))
         self.last_name_signup = QLineEdit()
-        self.last_name_signup.setMaxLength(30)
+        self.last_name_signup.setMaxLength(40)
         self.last_name_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]+")))
         self.ssn_signup = QLineEdit()
         self.ssn_signup.setMaxLength(10) 
         self.ssn_signup.setValidator(QIntValidator())  
         self.address_signup = QLineEdit()
-        self.address_signup.setMaxLength(50)
+        self.address_signup.setMaxLength(60)
         self.address_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9 ,.-]+")))
         self.signup_button = QPushButton("Sign Up")
         signup_layout.addRow("Username:", self.username_signup)
@@ -95,10 +95,6 @@ class LoginSignupTab(QWidget):
         else:
             QMessageBox.information(self, "Login Failed", "Invalid username or password")
             return
-        if user_role == "Customer":
-            if user_data["acc_activated"] == False:
-                QMessageBox.information(self, "Inactivated account", "Your account hasen't been activated yet.")
-                return
         if bcrypt.checkpw(password.encode('utf-8'), user_data["password"].encode('utf-8')):
             GlobalState.current_user = username
             GlobalState.current_role = user_role
