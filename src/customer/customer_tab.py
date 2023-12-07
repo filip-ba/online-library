@@ -6,6 +6,7 @@ from PyQt6.QtCore import Qt
 from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from PyQt6.QtCore import QTimer
+from bson import ObjectId
 import os
 from database_manager import DatabaseManager
 from global_state import GlobalState
@@ -146,17 +147,34 @@ class CustomerTab(QWidget):
             # Get book information from the selected row
             title = self.catalog_table.item(selected_row, 0).text()
             author = self.catalog_table.item(selected_row, 1).text()
+            # Find the user in the database
+            user_id = GlobalState.current_user
+            users_collection = self.database_manager.db["users"]
+            user_query = {"_id": user_id}
+            user_document = users_collection.find_one(user_query)
+            # Find the _id of the book based on title and author
+            books_collection = self.database_manager.db["books"]
+            book_query = {"title": title, "author": author}
+            book_document = books_collection.find_one(book_query)
+            if not user_document:
+                QMessageBox.warning(self, "Borrow Failed", f"User not found in the database.")
+                return
+            if not book_document:
+                QMessageBox.warning(self, "Borrow Failed", f"Book not found in the database.")
+                return
+            else:
+                book_id = book_document["_id"]
             # Check if there are items available for borrowing
-            items = self.get_available_items(title, author)
+            items = self.get_available_items(books_collection, book_id)
             if items <= 0:
                 QMessageBox.warning(self, "Borrow Failed", f"The book '{title}' by {author} is out of stock.")
                 return
             # Check if the user has reached the maximum limit of borrowed books (6 books)
-            elif self.is_max_books_borrowed():
+            elif self.is_max_books_borrowed(user_id):
                 QMessageBox.warning(self, "Book Limit Exceeded", "You have already borrowed the maximum allowed number of books (6).")
                 return
             # Check if the book is already in the user's borrowed_books
-            elif self.is_book_already_borrowed(title, author):
+            elif self.is_book_already_borrowed(user_id, book_id):
                 QMessageBox.warning(self, "Already Borrowed", f"You have already borrowed '{title}' by {author}.")
                 return
             # Confirm borrowing with the user
@@ -169,84 +187,69 @@ class CustomerTab(QWidget):
                     QMessageBox.StandardButton.Cancel
                 )
                 if reply == QMessageBox.StandardButton.Yes:
-                    # Borrow the book
-                    self.borrow_selected_book(selected_row)
+                    self.borrow_selected_book(user_id, book_id, title, author, books_collection)
         else:
             return
 
-    def borrow_selected_book(self, selected_row):
-        # Get book information from the selected row
-        title = self.catalog_table.item(selected_row, 0).text()
-        author = self.catalog_table.item(selected_row, 1).text()
-        username = GlobalState.current_user
-        # Get the book information
-        books_collection = self.database_manager.db["books"]
-        book_query = {"title": title, "author": author}
-        book = books_collection.find_one(book_query)
-        pages = book.get("pages", "")
-        year = book.get("year", "")
-        image_name = book.get("image_name", "")
-        # Insert a document into the 'borrowed_books' collection
-        borrowed_books_collection = self.database_manager.db["borrowed_books"]
-        borrowed_date = datetime.now(timezone.utc)
-        expiry_date = borrowed_date + timedelta(minutes = 1)
-        borrowed_book = {
-            "username": username,
-            "title": title,
-            "author": author,
-            "pages": pages,
-            "year": year,
-            "image_name": image_name,
-            "borrowed_date": borrowed_date,
-            "expiry_date": expiry_date
-        }
-        borrowed_books_collection.insert_one(borrowed_book)
-        # Update the 'items' field in the 'books' collection (decrement by 1)
-        update_query = {"$inc": {"items": -1}}
-        books_collection.update_one(book_query, update_query)
-        self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 10000)
-        # Add the book to the user's history
-        self.add_to_user_history(title, author, pages, year, borrowed_date, image_name)
-        # Refresh the borrowed books table
-        self.display_borrowed_books()
-        # Refresh the book history table
-        self.display_history()
+    def borrow_selected_book(self, user_id, book_id, title, author, books_collection):
+            # Insert a document into the 'borrowed_books' collection
+            borrowed_books_collection = self.database_manager.db["borrowed_books"]
+            borrow_date = datetime.utcnow()
+            expiry_date = borrow_date + timedelta(minutes=2) 
+            borrowed_book = {
+                "user_id": user_id,
+                "book_id": book_id,
+                "borrow_date": borrow_date,
+                "expiry_date": expiry_date
+            }
+            borrowed_books_collection.insert_one(borrowed_book)
+            # Update the 'items' field in the 'books' collection (decrement by 1)
+            update_query = {"$inc": {"items": -1}}
+            books_collection.update_one({"_id": book_id}, update_query)
+            self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 10000)
+            # Add the book to the user's history
+            self.add_to_user_history(user_id, book_id, borrow_date)
+            self.display_borrowed_books()
 
-    def get_available_items(self, title, author):
-        books_collection = self.database_manager.db["books"]
-        book_query = {"title": title, "author": author}
-        book = books_collection.find_one(book_query)
+    def get_available_items(self, books_collection, book_id):
+        book = books_collection.find_one({"_id": book_id})
         if book:
-            return book.get("items", 0)  # Return the number of available items
+            return book.get("items", 0)  
         else:
-            return 0  # Return 0 if the book is not found
+            return 0  
 
-    def is_book_already_borrowed(self, title, author):
+    def is_book_already_borrowed(self, user_id, book_id):
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         existing_borrowed_book = borrowed_books_collection.find_one(
-            {"username": GlobalState.current_user, "title": title, "author": author}
+            {"user_id": user_id, "book_id": book_id}
         )
         return existing_borrowed_book is not None
 
-    def is_max_books_borrowed(self):
+    def is_max_books_borrowed(self, user_id):
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         borrowed_books_count = borrowed_books_collection.count_documents(
-            {"username": GlobalState.current_user}
+            {"user_id": user_id}
         )
         return borrowed_books_count >= 6
 
     def display_borrowed_books(self):
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
-        user_borrowed_books = borrowed_books_collection.find({"username": GlobalState.current_user})
+        user_borrowed_books = borrowed_books_collection.find({"user_id": GlobalState.current_user})
         self.borrowed_books_table.setRowCount(0)
         for index, borrowed_book in enumerate(user_borrowed_books):
+            # Get book information from the 'books' collection based on book_id
+            books_collection = self.database_manager.db["books"]
+            book_id = borrowed_book["book_id"]
+            book_query = {"_id": book_id}
+            book = books_collection.find_one(book_query)
             # Insert a new row into the table
             self.borrowed_books_table.insertRow(index)
             # Display book information in the table
             for col, prop in enumerate(["title", "author", "pages", "year"]):
-                self.borrowed_books_table.setItem(index, col, QTableWidgetItem(str(borrowed_book[prop])))
+                self.borrowed_books_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
+            # Display book cover image
             cover_label = QLabel()
-            cover_path = os.path.join(Path(__file__).resolve().parent.parent.parent, "book_covers", f"{borrowed_book['image_name']}")
+            cover_path = os.path.join(Path(__file__).resolve().parent.parent.parent, "book_covers", f"{book['image_name']}")
             if os.path.exists(cover_path):
                 pixmap = QPixmap(cover_path)
                 scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
@@ -258,7 +261,7 @@ class CustomerTab(QWidget):
                 placeholder_label = QLabel("No Image")
                 self.borrowed_books_table.setCellWidget(index, 4, placeholder_label)
             # Display the borrowed date in the sixth column
-            borrowed_date = borrowed_book["borrowed_date"]
+            borrowed_date = borrowed_book["borrow_date"]
             formatted_borrowed_date = datetime.strftime(borrowed_date, "%d/%m/%Y, %H:%M")
             self.borrowed_books_table.setItem(index, 5, QTableWidgetItem(formatted_borrowed_date))
             # Display the expiration date in the seventh column
@@ -267,19 +270,16 @@ class CustomerTab(QWidget):
             self.borrowed_books_table.setItem(index, 6, QTableWidgetItem(formatted_expiry_date))
         self.borrowed_books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
-    def add_to_user_history(self, title, author, pages, year, event_date, image_name):
+    def add_to_user_history(self, user_id, book_id, borrow_date):
         # Add the book information into the user's history
         history_collection = self.database_manager.db["customer_history"]
         history_entry = {
-            "username": GlobalState.current_user,
-            "title": title,
-            "author": author,
-            "pages": pages,
-            "year": year,
-            "event_date": event_date,
-            "image_name": image_name
+            "user_id": user_id,
+            "book_id": book_id,
+            "borrow_date": borrow_date,
         }
         history_collection.insert_one(history_entry)
+        self.display_history()
 
     def display_history(self):
         display_book_history(self, self.history_table)
@@ -291,6 +291,21 @@ class CustomerTab(QWidget):
             # Get book information from the selected row
             title = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 0).text()
             author = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 1).text()
+            # Find the user in the database
+            user_id = GlobalState.current_user
+            users_collection = self.database_manager.db["users"]
+            user_query = {"_id": user_id}
+            user_document = users_collection.find_one(user_query)
+            # Find the _id of the book based on title and author
+            books_collection = self.database_manager.db["books"]
+            book_query = {"title": title, "author": author}
+            book_document = books_collection.find_one(book_query)
+ 
+            if not user_document:
+                QMessageBox.warning(self, "Return Failed", f"User not found in the database.")
+                return
+            # Get the book id
+            book_id = book_document["_id"]
             # Confirm returning with the user
             reply = QMessageBox.question(
                 self,
@@ -300,21 +315,18 @@ class CustomerTab(QWidget):
                 QMessageBox.StandardButton.Cancel
             )
             if reply == QMessageBox.StandardButton.Yes:
-                # Return the book
-                self.return_selected_book(selected_row)
+                self.return_selected_book(user_id, book_id, title, author)
         else:
             return
 
-    def return_selected_book(self, selected_row):
-        title = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 0).text()
-        author = self.tab_widget.widget(1).layout().itemAt(0).widget().item(selected_row, 1).text()
-        # Remove the document from the 'borrowed_books' collection
+    def return_selected_book(self, user_id, book_id, title, author):
         # Increasing the number of copies in the 'books' database is done via MongoDB Triggers.
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
-        return_query = {"username": GlobalState.current_user, "title": title, "author": author}
+        return_query = {"user_id": user_id, "book_id": book_id}
         borrowed_books_collection.delete_one(return_query)
         self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 10000)
         self.display_borrowed_books()
+        # Not refreshing the book catalog because of possible applied filters
 
     def search_books(self):
         advanced_search(self, self.signals, self.statusBar, self.catalog_table, self.refresh_catalog_button, self.cancel_button)

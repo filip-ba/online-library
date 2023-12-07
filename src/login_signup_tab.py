@@ -91,14 +91,15 @@ class LoginSignupTab(QWidget):
         user_collection = self.database_manager.db["users"]
         user_data = user_collection.find_one({"username": username})
         if user_data:
+            user_id = user_data["_id"]  
             user_role = user_data["role"]
         else:
             QMessageBox.information(self, "Login Failed", "Invalid username or password")
             return
         if bcrypt.checkpw(password.encode('utf-8'), user_data["password"].encode('utf-8')):
-            GlobalState.current_user = username
+            GlobalState.current_user = user_id  
             GlobalState.current_role = user_role
-            self.signals.update_status.emit(f"Logged in as {GlobalState.current_user} with role {GlobalState.current_role}")
+            self.signals.update_status.emit(f"Logged in as {username} with role {GlobalState.current_role}")
             self.username_login.setText("")
             self.password_login.setText("")
             self.update_tab_access()

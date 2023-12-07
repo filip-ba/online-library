@@ -54,12 +54,6 @@ class EditBookDialog(QDialog):
         self.items_input.setValidator(QIntValidator())  
         self.items_input.setMaxLength(2)
         form_layout.addRow(items_label, self.items_input)
-        # Image Name
-        image_label = QLabel("Image Name:")
-        self.image_input = QLineEdit((self.book_data.get("image_name", "")))
-        self.image_input.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9]+")))
-        self.image_input.setMaxLength(60)
-        form_layout.addRow(image_label, self.image_input)
         # Adding the form layout to the vertical layout
         form_layout.setSpacing(10)  # Adding a space between the forms
         layout.addLayout(form_layout)

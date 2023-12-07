@@ -177,20 +177,17 @@ class ManageBooksTab(QWidget):
             pages_text = dialog.pages_input.text()
             year_text = dialog.year_input.text()
             items_text = dialog.items_input.text()
-            image_name_text = dialog.image_input.text()
             title = title_text if title_text else None
             author = author_text if author_text else None
             pages = int(pages_text) if pages_text else None
             year = int(year_text) if year_text else None
             items = int(items_text) if items_text else None
-            image_name = image_name_text if image_name_text else None
             edited_data = {
                 "title": title,
                 "author": author,
                 "pages": pages,
                 "year": year,
                 "items": items,
-                "image_name": image_name
             }
             # Validate that all fields are filled
             if None in edited_data.values():
@@ -225,8 +222,13 @@ class ManageBooksTab(QWidget):
         if number_of_selected_rows == 1:
             title = self.catalog_table.item(selected_row, 0).text()
             author = self.catalog_table.item(selected_row, 1).text()
+            # Find the book_id
+            books_collection = self.database_manager.db["books"]
+            book_query = {"title": title, "author": author}
+            book_document = books_collection.find_one(book_query)
+            book_id = book_document["_id"]
             # Check if the book has been borrowed
-            if self.is_book_borrowed(title, author):
+            if self.is_book_borrowed(book_id):
                 QMessageBox.warning(self, "Deletion Failed", f"The book '{title}' by {author} has been borrowed and cannot be deleted.")
                 return
             # Confirm deletion with the user
@@ -248,10 +250,10 @@ class ManageBooksTab(QWidget):
         books_collection.delete_one(book_query)
         self.display_books()
            
-    def is_book_borrowed(self, title, author):
+    def is_book_borrowed(self, book_id):
         # Check if the book is in the borrowed_books collection
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
-        borrowed_book = borrowed_books_collection.find_one({"title": title, "author": author})
+        borrowed_book = borrowed_books_collection.find_one({"book_id": book_id})
         return borrowed_book is not None
     
 

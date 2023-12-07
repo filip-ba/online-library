@@ -86,34 +86,48 @@ def display_book_catalog(self, catalog_table, cursor=None):
     # Set the whole table as read-only
     catalog_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
+
+
+
 def display_book_history(self, history_table):
     # Display the user's book history in the history_table
     history_collection = self.database_manager.db["customer_history"]
-    user_history = history_collection.find({"username": GlobalState.current_user})
+    books_collection = self.database_manager.db["books"]
+    user_history = history_collection.find({"user_id": GlobalState.current_user})
     history_table.setRowCount(0)
-    for index, history_entry in enumerate(user_history):
-        history_table.insertRow(index)
-        image_name = history_entry.get("image_name", "")
-        # Display book information in the corresponding columns
-        for col, prop in enumerate(["title", "author", "pages", "year"]):
-            history_table.setItem(index, col, QTableWidgetItem(str(history_entry.get(prop, ""))))
-        # Display book cover image
-        cover_label = QLabel()
-        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}")
-        if os.path.exists(cover_path):
-            pixmap = QPixmap(cover_path)
-            scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-            cover_label.setPixmap(scaled_pixmap)
-            history_table.setRowHeight(index, scaled_pixmap.height())
-            cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            history_table.setCellWidget(index, 4, cover_label)
-        else:
-            placeholder_label = QLabel("No Image")
-            history_table.setCellWidget(index, 4, placeholder_label)
-        # Display the event date in the fifth column
-        formatted_event_date = datetime.strftime(history_entry["event_date"], "%d/%m/%Y, %H:%M")
-        history_table.setItem(index, 5, QTableWidgetItem(formatted_event_date))
+    if user_history:
+        for index, history_entry in enumerate(user_history):
+            history_table.insertRow(index)
+            book_id = history_entry.get("book_id", "")
+            # Fetch book information from the books collection
+            book = books_collection.find_one({"_id": book_id})
+            image_name = book.get("image_name", "")  
+            # Display book information in the corresponding columns
+            for col, prop in enumerate(["title", "author", "pages", "year"]):
+                history_table.setItem(index, col, QTableWidgetItem(str(book.get(prop, ""))))
+            # Display book cover image
+            cover_label = QLabel()
+            cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}")
+            if os.path.exists(cover_path):
+                pixmap = QPixmap(cover_path)
+                scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
+                cover_label.setPixmap(scaled_pixmap)
+                history_table.setRowHeight(index, scaled_pixmap.height())
+                cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+                history_table.setCellWidget(index, 4, cover_label)
+            else:
+                placeholder_label = QLabel("No Image")
+                history_table.setCellWidget(index, 4, placeholder_label)
+            # Display the event date in the fifth column
+            formatted_event_date = datetime.strftime(history_entry["borrow_date"], "%d/%m/%Y, %H:%M")
+            history_table.setItem(index, 5, QTableWidgetItem(formatted_event_date))
+    else:
+        return
     history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+
+
+
 
 def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_button, cancel_button):
     dialog = AdvancedSearchDialog()
