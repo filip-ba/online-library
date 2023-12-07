@@ -16,7 +16,7 @@ class MainWindow(QMainWindow):
         # Connects
         self.signals.update_status.connect(self.update_status_label)
         self.signals.update_status_bar_widget.connect(self.update_status_bar_widget)
-        self.signals.update_tab_widget.connect(self.update_tab_widget)
+        self.signals.tab_state.connect(self.set_tab_state)
 
     def create_ui(self):
         self.setWindowTitle("Online Library Management System")
@@ -39,6 +39,8 @@ class MainWindow(QMainWindow):
         self.tab_widget.addTab(login_signup_tab, "Login/Sign up")
         self.tab_widget.addTab(librarian_tab, "Librarian")
         self.tab_widget.addTab(customer_tab, "Customer")
+        self.tab_widget.setTabEnabled(1, False)
+        self.tab_widget.setTabEnabled(2, False)
         main_layout.addWidget(self.tab_widget)
         # MenuBar
         menu_bar = self.menuBar()
@@ -66,14 +68,15 @@ class MainWindow(QMainWindow):
     def update_tab_widget(self, tab_index):
         self.tab_widget.setCurrentIndex(tab_index)  
 
+    def set_tab_state(self, disable_tab, enable_tab, set_tab):
+        self.tab_widget.setTabEnabled(disable_tab, False)
+        self.tab_widget.setTabEnabled(enable_tab, True)
+        self.tab_widget.setCurrentIndex(set_tab)    
+
 
 class AppSignals(QObject):
     update_status = pyqtSignal(str)
     update_status_bar_widget = pyqtSignal(str)
-    update_tab_widget = pyqtSignal(int)
-    customer_tab_state = pyqtSignal(bool, bool)
     customer_logged_in = pyqtSignal()
-    librarian_tab_state = pyqtSignal(bool, bool)
     librarian_logged_in = pyqtSignal()
-
-
+    tab_state = pyqtSignal(int, int, int)

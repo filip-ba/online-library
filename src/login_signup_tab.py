@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QTabWidget, 
-    QFormLayout, QVBoxLayout, QTabWidget, QWidget, QMessageBox, QSpacerItem, QSizePolicy )
+    QFormLayout, QVBoxLayout, QTabWidget, QWidget, QMessageBox )
 from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator
 from PyQt6.QtCore import Qt, QRegularExpression
 import bcrypt  
@@ -85,43 +85,55 @@ class LoginSignupTab(QWidget):
         login_signup_layout.addWidget(login_signup_tabs)
 
     def login(self, username, password):
+        current_role = ""
         if GlobalState.current_user:
             QMessageBox.information(self, "Warning", "Another user is already logged in. Please sign out first.")
             return
-        user_collection = self.database_manager.db["users"]
-        user_data = user_collection.find_one({"username": username})
-        if user_data:
-            user_id = user_data["_id"]  
-            user_role = user_data["role"]
+        # Check the "librarians" collection
+        librarian_collection = self.database_manager.db["librarians"]
+        librarian_data = librarian_collection.find_one({"username": username})
+        if librarian_data:
+            current_user = librarian_data["_id"]
+            current_role = "Librarian"
+            login_data = librarian_data
+        # If the username is not found in the "librarians" collection, check the "users" collection
         else:
-            QMessageBox.information(self, "Login Failed", "Invalid username or password")
-            return
-        if bcrypt.checkpw(password.encode('utf-8'), user_data["password"].encode('utf-8')):
-            GlobalState.current_user = user_id  
-            GlobalState.current_role = user_role
+            user_collection = self.database_manager.db["users"]
+            user_data = user_collection.find_one({"username": username})
+            if user_data:
+                current_user = user_data["_id"]
+                current_role = "Customer"
+                login_data = user_data
+            else:
+                QMessageBox.information(self, "Login Failed", "Invalid username or password")
+                return
+        if bcrypt.checkpw(password.encode('utf-8'), login_data["password"].encode('utf-8')):
+            GlobalState.current_user = current_user
+            GlobalState.current_role = current_role
             self.signals.update_status.emit(f"Logged in as {username} with role {GlobalState.current_role}")
             self.username_login.setText("")
             self.password_login.setText("")
             self.update_tab_access()
+        else:
+            QMessageBox.information(self, "Login Failed", "Invalid username or password")
+            return
 
     def update_tab_access(self):
         if GlobalState.current_role == "Customer":
-            self.signals.update_tab_widget.emit(2)      # Sets the current tab to the customer_tab
-            self.signals.customer_tab_state.emit(True, False)   # Enables the widgets
             self.signals.customer_logged_in.emit()      # Initiates the logged in customer(Loads all the tables and personal info)
-        elif GlobalState.current_role == "Librarian":
-            self.signals.update_tab_widget.emit(1)      
-            self.signals.librarian_tab_state.emit(True, False) 
+            self.signals.tab_state.emit(1, 2, 2)        # Disabled tab #1, enable tab #2, move to the tab #2
+        elif GlobalState.current_role == "Librarian":     
             self.signals.librarian_logged_in.emit()
+            self.signals.tab_state.emit(2, 1, 1)        # Disabled tab #2, enable tab #1, move to the tab #1
 
     def logout(self):
         GlobalState.current_user = None
         GlobalState.current_role = None
-        self.signals.customer_tab_state.emit(False, False)     # Disabling widgets in the customer_tab
-        self.signals.librarian_tab_state.emit(False, False)    # Disabling widgets in the librarian_tab
         self.signals.update_status.emit("Not logged in")
         self.signals.update_status_bar_widget.emit("")  # Clear the status bar's widget after logging out
         self.statusBar.clearMessage()
+        self.signals.tab_state.emit(1, 0, 0)        # Disabled tab #1
+        self.signals.tab_state.emit(2, 0, 0)        # Disabled tab #2
 
     def register_user(self):
-        create_account(self, self.username_signup.text(), self.password_signup.text(), "Customer", self.first_name_signup.text(), self.last_name_signup.text(), self.ssn_signup.text(), self.address_signup.text(), self.statusBar)
+        create_account(self, self.username_signup.text(), self.password_signup.text(), self.first_name_signup.text(), self.last_name_signup.text(), self.ssn_signup.text(), self.address_signup.text(), "Customer", self.statusBar)

@@ -20,7 +20,6 @@ class ManageBooksTab(QWidget):
         self.statusBar = statusBar
         self.create_tab_ui()
         # Singals
-        self.signals.librarian_tab_state.connect(self.set_tab_state)
         self.signals.librarian_logged_in.connect(self.init_librarian_tab)
         # Connects
         self.refresh_catalog_button.clicked.connect(lambda: self.display_books())
@@ -32,21 +31,7 @@ class ManageBooksTab(QWidget):
         self.delete_book_button.clicked.connect(self.delete_selected_book)
 
     def init_librarian_tab(self):
-        self.display_books()
-
-    def set_tab_state(self, state, state_2):
-        # Disable/enable widgets in customer_tab depending on whether the user is logged in or not
-        self.advanced_search_button.setEnabled(state)
-        self.sort_books_button.setEnabled(state)
-        self.cancel_button.setEnabled(state_2)
-        self.refresh_catalog_button.setEnabled(state)
-        self.add_book_button.setEnabled(state)
-        self.edit_book_button.setEnabled(state)
-        self.delete_book_button.setEnabled(state)
-        self.tab_widget.setEnabled(state)
-        if state == False: 
-            self.catalog_table.setRowCount(0)    
-            self.tab_widget.setCurrentIndex(0)    
+        self.display_books() 
 
     def create_tab_ui(self):
         # Layout for the entire Customer tab
@@ -54,13 +39,9 @@ class ManageBooksTab(QWidget):
         # Top layout for "Advanced Search" and "Edit Profile" buttons
         top_layout = QHBoxLayout()
         self.advanced_search_button = QPushButton("Open Search")
-        self.advanced_search_button.setEnabled(False)
         self.sort_books_button = QPushButton("Open Sort Options")
-        self.sort_books_button.setEnabled(False)
         self.cancel_button = QPushButton("Cancel Selected Filters")
-        self.cancel_button.setEnabled(False)
         self.refresh_catalog_button = QPushButton("Refresh Catalog")
-        self.refresh_catalog_button.setEnabled(False)
         top_layout.addWidget(self.advanced_search_button)
         top_layout.addWidget(self.sort_books_button)
         top_layout.addWidget(self.cancel_button)
@@ -68,7 +49,6 @@ class ManageBooksTab(QWidget):
         # Middle layout for the QTabWidget
         tab_layout = QHBoxLayout()
         self.tab_widget = QTabWidget()
-        self.tab_widget.setEnabled(False)
         catalog_tab = QWidget()
         # Layout for the Catalog tab
         catalog_layout = QVBoxLayout(catalog_tab)
@@ -84,11 +64,8 @@ class ManageBooksTab(QWidget):
         # Bottom layout for "Borrow" and "Return" buttons
         bottom_layout = QHBoxLayout()
         self.add_book_button = QPushButton("Add Book")
-        self.add_book_button.setEnabled(False)
         self.edit_book_button = QPushButton("Edit Book")
-        self.edit_book_button.setEnabled(False)
         self.delete_book_button = QPushButton("Delete Book")
-        self.delete_book_button.setEnabled(False)
         bottom_layout.addWidget(self.add_book_button)
         bottom_layout.addWidget(self.edit_book_button)
         bottom_layout.addWidget(self.delete_book_button)

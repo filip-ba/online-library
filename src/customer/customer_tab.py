@@ -4,9 +4,8 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from PyQt6.QtCore import QTimer
-from bson import ObjectId
 import os
 from database_manager import DatabaseManager
 from global_state import GlobalState
@@ -24,7 +23,6 @@ class CustomerTab(QWidget):
         self.statusBar = statusBar
         self.create_customer_ui()
         # Signals
-        self.signals.customer_tab_state.connect(self.set_tab_state)
         self.signals.customer_logged_in.connect(self.init_customer_tab)
         # Connects
         self.refresh_catalog_button.clicked.connect(lambda: self.display_books())
@@ -42,21 +40,7 @@ class CustomerTab(QWidget):
         self.display_books()
         self.display_borrowed_books()
         self.display_history()
-
-    def set_tab_state(self, state, state_2):
-        # Disable/enable widgets in customer_tab depending on whether the user is logged in or not
-        self.advanced_search_button.setEnabled(state)
-        self.sort_books_button.setEnabled(state)
-        self.refresh_catalog_button.setEnabled(state)
-        self.cancel_button.setEnabled(state_2)
-        self.borrow_button.setEnabled(state)
-        self.return_button.setEnabled(state)
-        self.edit_profile_button.setEnabled(state)
-        self.tab_widget.setEnabled(state)
-        if state == False: 
-            self.catalog_table.setRowCount(0)    # Clearing the content of the book catalog
-            self.borrowed_books_table.setRowCount(0) 
-            self.tab_widget.setCurrentIndex(0)    # Displaying the catalog tab
+        self.tab_widget.setCurrentIndex(0)
 
     def update_borrowed_books(self):
         self.display_borrowed_books()
@@ -67,13 +51,9 @@ class CustomerTab(QWidget):
         # Top layout for "Advanced Search" and "Edit Profile" buttons
         top_layout = QHBoxLayout()
         self.advanced_search_button = QPushButton("Open Search")
-        self.advanced_search_button.setEnabled(False)
         self.sort_books_button = QPushButton("Open Sort Options")
-        self.sort_books_button.setEnabled(False)
         self.cancel_button = QPushButton("Cancel Selected Filters")
-        self.cancel_button.setEnabled(False)
         self.refresh_catalog_button = QPushButton("Refresh Catalog")
-        self.refresh_catalog_button.setEnabled(False)
         top_layout.addWidget(self.advanced_search_button)
         top_layout.addWidget(self.sort_books_button)
         top_layout.addWidget(self.cancel_button)
@@ -81,7 +61,6 @@ class CustomerTab(QWidget):
         # Middle layout for the QTabWidget
         tab_layout = QHBoxLayout()
         self.tab_widget = QTabWidget()
-        self.tab_widget.setEnabled(False)
         catalog_tab = QWidget()
         borrowed_books_tab = QWidget()
         history_tab = QWidget()
@@ -119,11 +98,8 @@ class CustomerTab(QWidget):
         # Bottom layout for "Borrow" and "Return" buttons
         bottom_layout = QHBoxLayout()
         self.borrow_button = QPushButton("Borrow")
-        self.borrow_button.setEnabled(False)
         self.return_button = QPushButton("Return")
-        self.return_button.setEnabled(False)
         self.edit_profile_button = QPushButton("Edit Profile")
-        self.edit_profile_button.setEnabled(False)
         bottom_layout.addWidget(self.borrow_button)
         bottom_layout.addWidget(self.return_button)
         bottom_layout.addWidget(self.edit_profile_button)

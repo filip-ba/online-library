@@ -16,7 +16,6 @@ class ManageCustomersTab(QWidget):
         self.statusBar = statusBar
         self.create_tab_ui()
         # Singals
-        self.signals.librarian_tab_state.connect(self.set_tab_state)
         self.signals.librarian_logged_in.connect(self.init_librarian_tab)
         # Connects
         self.refresh_button.clicked.connect(self.display_customers)
@@ -24,9 +23,6 @@ class ManageCustomersTab(QWidget):
 
     def init_librarian_tab(self):
         self.display_customers()
-
-    def set_tab_state(self, state, state_2):
-        pass
 
     def create_tab_ui(self):
         # Layouts
@@ -36,10 +32,10 @@ class ManageCustomersTab(QWidget):
         # Import/Export Layout
         group_box_2 = QGroupBox("Import/Export")
         import_export_layout = QHBoxLayout(group_box_2)
-        import_button = QPushButton("Import")
-        export_button = QPushButton("Export")
-        import_export_layout.addWidget(import_button)
-        import_export_layout.addWidget(export_button)
+        self.import_button = QPushButton("Import")
+        self.export_button = QPushButton("Export")
+        import_export_layout.addWidget(self.import_button)
+        import_export_layout.addWidget(self.export_button)
         # Search and Sort Layout
         group_box_1 = QGroupBox("Search/Sort Actions")
         search_sort_layout = QVBoxLayout(group_box_1)
@@ -100,9 +96,7 @@ class ManageCustomersTab(QWidget):
         
     def display_customers(self):
         users_collection = self.database_manager.db["users"]
-        # Query customers based on the role
-        customer_query = {"role": "Customer"}
-        customer_data = users_collection.find(customer_query)
+        customer_data = users_collection.find()
         self.customers_table.setRowCount(0)
         for index, customer in enumerate(customer_data):
             self.customers_table.insertRow(index)
@@ -114,5 +108,5 @@ class ManageCustomersTab(QWidget):
         dialog = RegistrationDialog()
         result = dialog.exec()
         if result == QDialog.DialogCode.Accepted:
-            create_account(self, dialog.username_signup.text(), dialog.password_signup.text(), "Librarian", dialog.first_name_signup.text(), dialog.last_name_signup.text(), dialog.ssn_signup.text(), dialog.address_signup.text(), self.statusBar)
+            create_account(self, dialog.username_signup.text(), dialog.password_signup.text(), dialog.first_name_signup.text(), dialog.last_name_signup.text(), dialog.ssn_signup.text(), dialog.address_signup.text(), "Librarian", self.statusBar)
             self.display_customers()

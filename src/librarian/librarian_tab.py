@@ -26,5 +26,7 @@ class LibrarianTab(QWidget):
         main_layout.addWidget(self.tab_widget)
         self.setLayout(main_layout)
 
+            
+
 
 
