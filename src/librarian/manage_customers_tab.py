@@ -1,7 +1,6 @@
 from PyQt6.QtWidgets import (
-      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QComboBox, QListWidget, QListWidgetItem, QScrollArea,  
-      QInputDialog, QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView )
-from PyQt6.QtGui import QPixmap
+      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QListWidget, QListWidgetItem, QScrollArea,  
+      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView )
 from PyQt6.QtCore import Qt
 from database_manager import DatabaseManager
 from shared_functions import create_account
@@ -22,10 +21,13 @@ class ManageCustomersTab(QWidget):
         self.add_account_button.clicked.connect(self.register_user)
         self.confirm_account_button.clicked.connect(self.activate_account)
         self.decline_account_button.clicked.connect(self.decline_activation)
+        self.confirm_changes_button.clicked.connect(self.accept_account_changes)
+        self.decline_changes_button.clicked.connect(self.decline_account_changes)
 
     def init_librarian_tab(self):
         self.display_customers()
         self.display_inactivated_accounts()
+        self.display_edited_accounts()
 
     def create_tab_ui(self):
         # Layouts
@@ -102,9 +104,9 @@ class ManageCustomersTab(QWidget):
         self.list_widget_confirm_changes = QListWidget()
         list_title__2 = QLabel("Confirm Account Changes")
         self.confirm_changes_button = QPushButton("Confirm")
-        self.decline_cahnges_button = QPushButton("Decline")
+        self.decline_changes_button = QPushButton("Decline")
         button_layout_2.addWidget(self.confirm_changes_button)
-        button_layout_2.addWidget(self.decline_cahnges_button)
+        button_layout_2.addWidget(self.decline_changes_button)
         list_layout_2.addWidget(list_title__2)
         list_layout_2.addWidget(self.list_widget_confirm_changes)
         list_layout_2.addLayout(button_layout_2)
@@ -158,10 +160,25 @@ class ManageCustomersTab(QWidget):
             last_name = account_data.get("last_name")
             ssn = account_data.get("ssn")
             address = account_data.get("address")
-            user = (f"User '{username}', First Name: '{first_name}', Last Name: '{last_name}', SSN '{ssn}', Address: '{address}' ")
+            user = (f"User '{username}', First Name '{first_name}', Last Name '{last_name}', SSN '{ssn}', Address '{address}'")
             list_item = QListWidgetItem(user)
             list_item.setData(Qt.ItemDataRole.UserRole, account_data.get("_id"))
             self.list_widget_activate_acc.addItem(list_item)
+
+    def display_edited_accounts(self):
+        edited_accounts_collection = self.database_manager.db["edited_accounts"]
+        edited_accounts_data = edited_accounts_collection.find()
+        self.list_widget_confirm_changes.clear()
+        for account_data in edited_accounts_data:
+            username = account_data.get("username")
+            first_name = account_data.get("first_name")
+            last_name = account_data.get("last_name")
+            ssn = account_data.get("ssn")
+            address = account_data.get("address")
+            user = (f"User '{username}', First Name '{first_name}', Last Name '{last_name}', SSN '{ssn}', Address '{address}'")
+            list_item = QListWidgetItem(user)
+            list_item.setData(Qt.ItemDataRole.UserRole, account_data.get("_id"))
+            self.list_widget_confirm_changes.addItem(list_item)
 
     def register_user(self):
         dialog = RegistrationDialog()
@@ -199,11 +216,6 @@ class ManageCustomersTab(QWidget):
                     self.statusBar.showMessage(f"The account '{account_data["username"]}' has been activated.", 10000)
                 else:
                     QMessageBox.warning(self, "Error", "Unable to find account data.")
-                    return
-            else:
-                return
-        else:
-            return
         
     def decline_activation(self):
         selected_item = self.list_widget_activate_acc.currentItem()
@@ -215,7 +227,32 @@ class ManageCustomersTab(QWidget):
                 inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
                 inactivated_accounts_collection.delete_one({"_id": user_id})
                 self.display_inactivated_accounts()
-                self.display_customers()
                 self.statusBar.showMessage(f"The account request has been declined.", 10000)
-        else:
-            return
+
+        
+
+
+    def accept_account_changes(self):
+        pass
+
+
+
+    def decline_account_changes(self):
+        selected_item = self.list_widget_confirm_changes.currentItem()
+        if selected_item:
+            user_id = selected_item.data(Qt.ItemDataRole.UserRole)
+            users_db = self.database_manager.db["users"]
+            does_user_exist = users_db.find_one({"_id": user_id})
+            if does_user_exist:
+                confirm_message = "Are you sure you want to decline this account edit request?"
+                confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                if confirm_result == QMessageBox.StandardButton.Yes:
+                    edited_accounts_collection = self.database_manager.db["edited_accounts"]
+                    edited_accounts_collection.delete_one({"_id": user_id})
+                    self.display_edited_accounts()
+                    self.statusBar.showMessage(f"The account changes has been declined.", 10000)
+            else:
+                QMessageBox.warning(self, "User Not Found", "The selected user was not found.")
+        
+
+

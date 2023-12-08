@@ -1,11 +1,12 @@
 from PyQt6.QtWidgets import (
-      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox,
+      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QDialog,
       QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QHeaderView )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
 from pathlib import Path
 from datetime import datetime, timedelta
 from PyQt6.QtCore import QTimer
+import bcrypt  
 import os
 from database_manager import DatabaseManager
 from global_state import GlobalState
@@ -13,6 +14,7 @@ from shared_functions import display_book_catalog
 from shared_functions import display_book_history
 from shared_functions import advanced_search
 from shared_functions import sort_book_catalog
+from dialogs.edit_profile_dialog import EditProfileDialog
 
 
 class CustomerTab(QWidget):
@@ -31,6 +33,7 @@ class CustomerTab(QWidget):
         self.sort_books_button.clicked.connect(self.sort_books)
         self.borrow_button.clicked.connect(self.borrow_book)
         self.return_button.clicked.connect(self.return_book)
+        self.edit_profile_button.clicked.connect(self.edit_details)
         # QTimer for updating every 10 seconds
         self.update_timer = QTimer(self)
         self.update_timer.timeout.connect(self.update_borrowed_books)
@@ -318,3 +321,46 @@ class CustomerTab(QWidget):
         self.signals.update_status_bar_widget.emit("")
         self.display_books()
 
+    def edit_details(self):
+        password = ""
+        user_collection = self.database_manager.db["users"]
+        query = {"_id": GlobalState.current_user}
+        user_data = user_collection.find_one(query)
+        # Check if the user has already tried to change the details
+        edited_accounts_collection = self.database_manager.db["edited_accounts"]
+        is_there_record = edited_accounts_collection.find_one(query)
+        if is_there_record:
+            QMessageBox.information(self, "The change of details has failed.", "Wait for the librarian to process the previous request to change the information.")
+            return
+        if user_data:
+            dialog = EditProfileDialog(user_data)
+            result = dialog.exec()
+            if result == QDialog.DialogCode.Accepted:
+                username_text = dialog.username_input.text()
+                password_text = dialog.password_input.text()
+                first_name_text = dialog.first_name_input.text()
+                last_name_text = dialog.last_name_input.text()
+                ssn_text = dialog.ssn_input.text()
+                address_text = dialog.address_input.text()
+                if password_text == "":
+                    password = user_data["password"]
+                else:
+                    password = str(bcrypt.hashpw(password_text.encode('utf-8'), bcrypt.gensalt()), 'utf-8')
+                edited_data = {
+                    "_id" : GlobalState.current_user,
+                    "username": username_text,
+                    "password": password,
+                    "first_name": first_name_text,
+                    "last_name": last_name_text,
+                    "ssn": ssn_text,
+                    "address": address_text,
+                }
+                # Validate that all fields are filled
+                if None in edited_data.values():
+                    QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
+                    return
+                else:
+                    edited_accounts_collection.insert_one(edited_data)
+                    self.statusBar.showMessage(f"The changes have been sent to the librarian for approval.", 10000)
+        else:
+            return
