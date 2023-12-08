@@ -32,6 +32,8 @@ class ManageBooksTab(QWidget):
 
     def init_librarian_tab(self):
         self.display_books() 
+        self.cancel_button.setEnabled(False)
+        self.refresh_catalog_button.setEnabled(True)    
 
     def create_tab_ui(self):
         # Layout for the entire Customer tab

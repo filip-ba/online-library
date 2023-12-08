@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import (
-      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QComboBox, QListWidget, QSpacerItem, QScrollArea,  
+      QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QComboBox, QListWidget, QListWidgetItem, QScrollArea,  
       QInputDialog, QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
@@ -18,11 +18,14 @@ class ManageCustomersTab(QWidget):
         # Singals
         self.signals.librarian_logged_in.connect(self.init_librarian_tab)
         # Connects
-        self.refresh_button.clicked.connect(self.display_customers)
+        self.refresh_button.clicked.connect(self.init_librarian_tab)
         self.add_account_button.clicked.connect(self.register_user)
+        self.confirm_account_button.clicked.connect(self.activate_account)
+        self.decline_account_button.clicked.connect(self.decline_activation)
 
     def init_librarian_tab(self):
         self.display_customers()
+        self.display_inactivated_accounts()
 
     def create_tab_ui(self):
         # Layouts
@@ -36,7 +39,7 @@ class ManageCustomersTab(QWidget):
         self.search_button = QPushButton("Open Search")
         self.sort_button = QPushButton("Open Sort Options")
         self.cancel_button = QPushButton("Cancel Selected Filters")
-        self.refresh_button = QPushButton("Refresh List")
+        self.refresh_button = QPushButton("Refresh Lists")
         search_sort_layout.addWidget(self.search_button)
         search_sort_layout.addWidget(self.sort_button)
         search_sort_layout.addWidget(self.cancel_button)
@@ -145,9 +148,74 @@ class ManageCustomersTab(QWidget):
                 self.customers_table.setItem(index, col, QTableWidgetItem(str(customer[prop])))
         self.customers_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
+    def display_inactivated_accounts(self):
+        inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
+        inactivated_accounts_data = inactivated_accounts_collection.find()
+        self.list_widget_activate_acc.clear()
+        for account_data in inactivated_accounts_data:
+            username = account_data.get("username")
+            first_name = account_data.get("first_name")
+            last_name = account_data.get("last_name")
+            ssn = account_data.get("ssn")
+            address = account_data.get("address")
+            user = (f"User '{username}', First Name: '{first_name}', Last Name: '{last_name}', SSN '{ssn}', Address: '{address}' ")
+            list_item = QListWidgetItem(user)
+            list_item.setData(Qt.ItemDataRole.UserRole, account_data.get("_id"))
+            self.list_widget_activate_acc.addItem(list_item)
+
     def register_user(self):
         dialog = RegistrationDialog()
         result = dialog.exec()
         if result == QDialog.DialogCode.Accepted:
             create_account(self, dialog.username_signup.text(), dialog.password_signup.text(), dialog.first_name_signup.text(), dialog.last_name_signup.text(), dialog.ssn_signup.text(), dialog.address_signup.text(), "Librarian", self.statusBar)
             self.display_customers()
+
+    def activate_account(self):
+        selected_item = self.list_widget_activate_acc.currentItem()
+        if selected_item:
+            # Retrieve the associated user ID
+            user_id = selected_item.data(Qt.ItemDataRole.UserRole)
+            # Fetch the user data from the inactivated accounts collection
+            inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
+            account_data = inactivated_accounts_collection.find_one({"_id": user_id})
+            confirm_message = "Are you sure you want to accept this account request?"
+            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if confirm_result == QMessageBox.StandardButton.Yes:
+                if account_data:
+                    users_collection = self.database_manager.db["users"]
+                    users_collection.insert_one({
+                        "username": account_data.get("username"),
+                        "password": account_data.get("password"),
+                        "first_name": account_data.get("first_name"),
+                        "last_name": account_data.get("last_name"),
+                        "ssn": account_data.get("ssn"),
+                        "address": account_data.get("address"),
+                    })
+                    # Remove the document from the inactivated accounts collection
+                    inactivated_accounts_collection.delete_one({"_id": user_id})
+                    # Refresh the displayed inactivated accounts and customers
+                    self.display_inactivated_accounts()
+                    self.display_customers()
+                    self.statusBar.showMessage(f"The account '{account_data["username"]}' has been activated.", 10000)
+                else:
+                    QMessageBox.warning(self, "Error", "Unable to find account data.")
+                    return
+            else:
+                return
+        else:
+            return
+        
+    def decline_activation(self):
+        selected_item = self.list_widget_activate_acc.currentItem()
+        if selected_item:
+            user_id = selected_item.data(Qt.ItemDataRole.UserRole)
+            confirm_message = "Are you sure you want to decline this account request?"
+            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if confirm_result == QMessageBox.StandardButton.Yes:
+                inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
+                inactivated_accounts_collection.delete_one({"_id": user_id})
+                self.display_inactivated_accounts()
+                self.display_customers()
+                self.statusBar.showMessage(f"The account request has been declined.", 10000)
+        else:
+            return

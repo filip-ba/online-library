@@ -41,6 +41,8 @@ class CustomerTab(QWidget):
         self.display_borrowed_books()
         self.display_history()
         self.tab_widget.setCurrentIndex(0)
+        self.cancel_button.setEnabled(False)
+        self.refresh_catalog_button.setEnabled(True)
 
     def update_borrowed_books(self):
         self.display_borrowed_books()
