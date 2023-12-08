@@ -96,7 +96,7 @@ class ManageCustomersTab(QWidget):
         # List Widget 2
         list_layout_2 = QVBoxLayout()
         button_layout_2 = QHBoxLayout()
-        self.list_widget_confirm_changes  = QListWidget()
+        self.list_widget_confirm_changes = QListWidget()
         list_title__2 = QLabel("Confirm Account Changes")
         self.confirm_changes_button = QPushButton("Confirm")
         self.decline_cahnges_button = QPushButton("Decline")
@@ -105,14 +105,14 @@ class ManageCustomersTab(QWidget):
         list_layout_2.addWidget(list_title__2)
         list_layout_2.addWidget(self.list_widget_confirm_changes)
         list_layout_2.addLayout(button_layout_2)
-        right_layout.addLayout(list_layout_2)
         # Wrap the left_layout in a QScrollArea
         scroll_wrapper = QWidget()
+        scroll_wrapper.setMinimumWidth(250)
+        scroll_wrapper.setMaximumWidth(250)
         scroll_wrapper_layout = QVBoxLayout(scroll_wrapper)
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)  
         scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff) 
-        scroll_area.setMinimumWidth(200)
         left_widget = QWidget()
         left_widget.setLayout(left_layout)
         scroll_area.setWidget(left_widget)
@@ -134,7 +134,7 @@ class ManageCustomersTab(QWidget):
         main_layout.addLayout(middle_layout)
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)
-        
+
     def display_customers(self):
         users_collection = self.database_manager.db["users"]
         customer_data = users_collection.find()
