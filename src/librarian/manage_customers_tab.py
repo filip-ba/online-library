@@ -19,7 +19,7 @@ class ManageCustomersTab(QWidget):
         # Connects
         self.refresh_button.clicked.connect(self.init_librarian_tab)
         self.add_account_button.clicked.connect(self.register_user)
-        self.confirm_account_button.clicked.connect(self.activate_account)
+        self.confirm_account_button.clicked.connect(self.accept_activation)
         self.decline_account_button.clicked.connect(self.decline_activation)
         self.confirm_changes_button.clicked.connect(self.accept_account_changes)
         self.decline_changes_button.clicked.connect(self.decline_account_changes)
@@ -187,7 +187,7 @@ class ManageCustomersTab(QWidget):
             create_account(self, dialog.username_signup.text(), dialog.password_signup.text(), dialog.first_name_signup.text(), dialog.last_name_signup.text(), dialog.ssn_signup.text(), dialog.address_signup.text(), "Librarian", self.statusBar)
             self.display_customers()
 
-    def activate_account(self):
+    def accept_activation(self):
         selected_item = self.list_widget_activate_acc.currentItem()
         if selected_item:
             # Retrieve the associated user ID
@@ -229,13 +229,37 @@ class ManageCustomersTab(QWidget):
                 self.display_inactivated_accounts()
                 self.statusBar.showMessage(f"The account request has been declined.", 10000)
 
-        
-
-
     def accept_account_changes(self):
-        pass
-
-
+        selected_item = self.list_widget_confirm_changes.currentItem()
+        if selected_item:
+            # Retrieve the associated user ID
+            user_id = selected_item.data(Qt.ItemDataRole.UserRole)
+            # Fetch the user data from the inactivated accounts collection
+            edited_accounts_collection = self.database_manager.db["edited_accounts"]
+            account_data = edited_accounts_collection.find_one({"_id": user_id})
+            confirm_message = "Are you sure you want to accept this change request?"
+            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if confirm_result == QMessageBox.StandardButton.Yes:
+                if account_data:
+                    users_collection = self.database_manager.db["users"]
+                    query = {
+                        "$set": {
+                            "username": account_data.get("username"),
+                            "password": account_data.get("password"),
+                            "first_name": account_data.get("first_name"),
+                            "last_name": account_data.get("last_name"),
+                            "ssn": account_data.get("ssn"),
+                            "address": account_data.get("address"),
+                        }
+                    }
+                    # Update the user data in the users collection
+                    users_collection.update_one({"_id": user_id}, query)
+                    # Delete the record from the edited_accounts collection
+                    edited_accounts_collection.delete_one({"_id": user_id})
+                    self.display_edited_accounts()
+                    self.statusBar.showMessage(f"The account changes have been accepted.", 10000)
+                else:
+                    QMessageBox.warning(self, "Error", "Unable to find account data.")
 
     def decline_account_changes(self):
         selected_item = self.list_widget_confirm_changes.currentItem()

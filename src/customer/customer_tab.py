@@ -322,7 +322,6 @@ class CustomerTab(QWidget):
         self.display_books()
 
     def edit_details(self):
-        password = ""
         user_collection = self.database_manager.db["users"]
         query = {"_id": GlobalState.current_user}
         user_data = user_collection.find_one(query)
@@ -330,11 +329,13 @@ class CustomerTab(QWidget):
         edited_accounts_collection = self.database_manager.db["edited_accounts"]
         is_there_record = edited_accounts_collection.find_one(query)
         if is_there_record:
-            QMessageBox.information(self, "The change of details has failed.", "Wait for the librarian to process the previous request to change the information.")
+            QMessageBox.information(self, "Change of Details Failed", "Wait for the librarian to process the previous request to change the information.")
             return
+        # Check if the user exists in the database(hasn't been banned/deleted)
         if user_data:
-            dialog = EditProfileDialog(user_data)
+            dialog = EditProfileDialog(user_data, "Customer")
             result = dialog.exec()
+            # If accept button was pressed
             if result == QDialog.DialogCode.Accepted:
                 username_text = dialog.username_input.text()
                 password_text = dialog.password_input.text()
@@ -342,25 +343,59 @@ class CustomerTab(QWidget):
                 last_name_text = dialog.last_name_input.text()
                 ssn_text = dialog.ssn_input.text()
                 address_text = dialog.address_input.text()
-                if password_text == "":
-                    password = user_data["password"]
-                else:
-                    password = str(bcrypt.hashpw(password_text.encode('utf-8'), bcrypt.gensalt()), 'utf-8')
-                edited_data = {
-                    "_id" : GlobalState.current_user,
-                    "username": username_text,
-                    "password": password,
-                    "first_name": first_name_text,
-                    "last_name": last_name_text,
-                    "ssn": ssn_text,
-                    "address": address_text,
-                }
-                # Validate that all fields are filled
-                if None in edited_data.values():
-                    QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
+                # Check if any information has been changed
+                if (
+                    username_text == user_data["username"] and
+                    password_text == "" and
+                    first_name_text == user_data["first_name"] and
+                    last_name_text == user_data["last_name"] and
+                    ssn_text == user_data["ssn"] and
+                    address_text == user_data["address"]
+                ):
+                    QMessageBox.information(self, "No Changes", "No information has been changed.")
                     return
+                # If the password field was empty
+                password = (
+                    user_data["password"] if password_text == "" else
+                    str(bcrypt.hashpw(password_text.encode('utf-8'), bcrypt.gensalt()), 'utf-8')
+                )
+                # Check if all fields are filled in
+                if any(not field for field in [username_text, password, first_name_text, last_name_text, ssn_text, address_text]):
+                    QMessageBox.information(self, "Incomplete Information", "All fields except 'Password' must be filled in.")
+                    return
+                # Check if SSN is 10 characters long
+                if not len(ssn_text) == 10:
+                    QMessageBox.information(self, "Account Changes Failed", "The SSN must be 10 characters long (no slash)")
+                    return
+                # Check if the username or SSN already exists in the database
+                inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
+                customer_collection = self.database_manager.db["users"]
+                # Exclude the current user from the query
+                existing_username_query = {"username": username_text, "_id": {"$ne": GlobalState.current_user}}
+                existing_ssn_query = {"ssn": ssn_text, "_id": {"$ne": GlobalState.current_user}}
+                existing_username = customer_collection.find_one(existing_username_query)
+                existing_ssn = customer_collection.find_one(existing_ssn_query)
+                existing_inactivated_username = inactivated_accounts_collection.find_one({"username": username_text, "_id": {"$ne": GlobalState.current_user}})
+                existing_inactivated_ssn = inactivated_accounts_collection.find_one({"ssn": ssn_text, "_id": {"$ne": GlobalState.current_user}})
+                if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn):
+                    QMessageBox.information(self, "Account Changes Failed", "Username and birth number already exist.")
+                elif existing_username or existing_inactivated_username :
+                    QMessageBox.information(self, "Account Changes Failed", "Username already exists.")
+                elif existing_ssn or existing_inactivated_ssn:
+                    QMessageBox.information(self, "Account Changes Failed", "Birth number already exists.")
                 else:
+                    edited_data = {
+                        "_id" : GlobalState.current_user,
+                        "username": username_text,
+                        "password": password,
+                        "first_name": first_name_text,
+                        "last_name": last_name_text,
+                        "ssn": ssn_text,
+                        "address": address_text,
+                    }
                     edited_accounts_collection.insert_one(edited_data)
                     self.statusBar.showMessage(f"The changes have been sent to the librarian for approval.", 10000)
+            else:
+                QMessageBox.information(self, "Change of Details Cancelled", "No changes have been made.")
         else:
-            return
+            QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")

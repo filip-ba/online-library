@@ -6,9 +6,10 @@ from PyQt6.QtCore import Qt, QRegularExpression
 
 
 class EditProfileDialog(QDialog):
-    def __init__(self, user_data):
+    def __init__(self, user_data, role):
         super().__init__()
         self.user_data = user_data
+        self.role = role
         self.create_dialog_ui()
         # Connects
         self.ok_button.clicked.connect(self.accept)
@@ -32,12 +33,13 @@ class EditProfileDialog(QDialog):
         self.username_input.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9,.-_]+")))
         form_layout.addRow(username_label, self.username_input)
         # Password
-        password_label = QLabel("Password:")
-        self.password_input = QLineEdit()
-        self.password_input.setMaxLength(40)
-        self.password_input.setValidator(QRegularExpressionValidator(QRegularExpression("[^\\s]+")))
-        self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
-        form_layout.addRow(password_label, self.password_input)
+        if self.role == "Customer":
+            password_label = QLabel("Password:")
+            self.password_input = QLineEdit()
+            self.password_input.setMaxLength(40)
+            self.password_input.setValidator(QRegularExpressionValidator(QRegularExpression("[^\\s]+")))
+            self.password_input.setEchoMode(QLineEdit.EchoMode.Password)
+            form_layout.addRow(password_label, self.password_input)
         # First Name
         first_name_label = QLabel("First Name:")
         self.first_name_input = QLineEdit(self.user_data.get("first_name", ""))
@@ -68,7 +70,7 @@ class EditProfileDialog(QDialog):
         layout.addSpacerItem(QSpacerItem(10, 10))   # Adding a space after the form layout
         # Buttons
         button_layout = QHBoxLayout()
-        self.ok_button = QPushButton("Ok")
+        self.ok_button = QPushButton("Confirm")
         self.cancel_button = QPushButton("Cancel")
         button_layout.addWidget(self.ok_button)
         button_layout.addWidget(self.cancel_button)
