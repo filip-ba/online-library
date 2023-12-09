@@ -136,4 +136,11 @@ class LoginSignupTab(QWidget):
         self.signals.tab_state.emit(2, 0, 0)        # Disabled tab #2
 
     def register_user(self):
-        create_account(self, self.username_signup.text(), self.password_signup.text(), self.first_name_signup.text(), self.last_name_signup.text(), self.ssn_signup.text(), self.address_signup.text(), "Customer", self.statusBar)
+        account_registered = create_account(self, self.username_signup.text(), self.password_signup.text(), self.first_name_signup.text(), self.last_name_signup.text(), self.ssn_signup.text(), self.address_signup.text(), "Customer", self.statusBar)
+        if account_registered == True:
+            self.username_signup.setText("")
+            self.password_signup.setText("")
+            self.first_name_signup.setText("")
+            self.last_name_signup.setText("")
+            self.ssn_signup.setText("")
+            self.address_signup.setText("")

@@ -187,7 +187,7 @@ class CustomerTab(QWidget):
             # Update the 'items' field in the 'books' collection (decrement by 1)
             update_query = {"$inc": {"items": -1}}
             books_collection.update_one({"_id": book_id}, update_query)
-            self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 10000)
+            self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 8000)
             # Add the book to the user's history
             self.add_to_user_history(user_id, book_id, borrow_date)
             self.display_borrowed_books()
@@ -305,7 +305,7 @@ class CustomerTab(QWidget):
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         return_query = {"user_id": user_id, "book_id": book_id}
         borrowed_books_collection.delete_one(return_query)
-        self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 10000)
+        self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 8000)
         self.display_borrowed_books()
         # Not refreshing the book catalog because of possible applied filters
 
@@ -393,8 +393,8 @@ class CustomerTab(QWidget):
                         "ssn": ssn_text,
                         "address": address_text,
                     }
+                    self.statusBar.showMessage(f"The changes have been sent to the librarian for approval.", 8000)
                     edited_accounts_collection.insert_one(edited_data)
-                    self.statusBar.showMessage(f"The changes have been sent to the librarian for approval.", 10000)
             else:
                 QMessageBox.information(self, "Change of Details Cancelled", "No changes have been made.")
         else:

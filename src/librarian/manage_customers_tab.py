@@ -2,9 +2,12 @@ from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QListWidget, QListWidgetItem, QScrollArea,  
       QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView )
 from PyQt6.QtCore import Qt
+import bcrypt
 from database_manager import DatabaseManager
-from shared_functions import create_account
+from global_state import GlobalState
 from dialogs.registration_dialog import RegistrationDialog
+from dialogs.edit_profile_dialog import EditProfileDialog
+from shared_functions import create_account
 
 
 class ManageCustomersTab(QWidget):
@@ -23,11 +26,19 @@ class ManageCustomersTab(QWidget):
         self.decline_account_button.clicked.connect(self.decline_activation)
         self.confirm_changes_button.clicked.connect(self.accept_account_changes)
         self.decline_changes_button.clicked.connect(self.decline_account_changes)
+        self.edit_account_button.clicked.connect(self.edit_customer_account)
 
     def init_librarian_tab(self):
         self.display_customers()
         self.display_inactivated_accounts()
         self.display_edited_accounts()
+        self.pending_accounts()
+
+    def pending_accounts(self):
+        inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
+        pending_accounts_count = inactivated_accounts_collection.count_documents({})
+        if pending_accounts_count > 0:
+            self.statusBar.showMessage(f"There are {pending_accounts_count} accounts waiting for activation.", 8000)
 
     def create_tab_ui(self):
         # Layouts
@@ -213,7 +224,7 @@ class ManageCustomersTab(QWidget):
                     # Refresh the displayed inactivated accounts and customers
                     self.display_inactivated_accounts()
                     self.display_customers()
-                    self.statusBar.showMessage(f"The account '{account_data["username"]}' has been activated.", 10000)
+                    self.statusBar.showMessage(f"The account '{account_data["username"]}' has been activated.", 8000)
                 else:
                     QMessageBox.warning(self, "Error", "Unable to find account data.")
         
@@ -227,7 +238,7 @@ class ManageCustomersTab(QWidget):
                 inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
                 inactivated_accounts_collection.delete_one({"_id": user_id})
                 self.display_inactivated_accounts()
-                self.statusBar.showMessage(f"The account request has been declined.", 10000)
+                self.statusBar.showMessage(f"The account request has been declined.", 8000)
 
     def accept_account_changes(self):
         selected_item = self.list_widget_confirm_changes.currentItem()
@@ -257,7 +268,8 @@ class ManageCustomersTab(QWidget):
                     # Delete the record from the edited_accounts collection
                     edited_accounts_collection.delete_one({"_id": user_id})
                     self.display_edited_accounts()
-                    self.statusBar.showMessage(f"The account changes have been accepted.", 10000)
+                    self.display_customers()
+                    self.statusBar.showMessage(f"The account changes have been accepted.", 8000)
                 else:
                     QMessageBox.warning(self, "Error", "Unable to find account data.")
 
@@ -274,9 +286,88 @@ class ManageCustomersTab(QWidget):
                     edited_accounts_collection = self.database_manager.db["edited_accounts"]
                     edited_accounts_collection.delete_one({"_id": user_id})
                     self.display_edited_accounts()
-                    self.statusBar.showMessage(f"The account changes has been declined.", 10000)
+                    self.statusBar.showMessage(f"The account changes has been declined.", 8000)
             else:
                 QMessageBox.warning(self, "User Not Found", "The selected user was not found.")
+            
+    def edit_customer_account(self):
+        selected_row = self.customers_table.currentRow()
+        number_of_selected_rows = len(self.customers_table.selectionModel().selectedRows())
+        if number_of_selected_rows != 1:
+            QMessageBox.warning(self, "Selection Error", "Please select a customer from the table.")
+            return
+        account_username = self.customers_table.item(selected_row, 0).text()
+        user_collection = self.database_manager.db["users"]
+        query = {"username": account_username}
+        user_data = user_collection.find_one(query)
+        # Check if the user exists in the database (hasn't been banned/deleted)
+        if user_data:
+            dialog = EditProfileDialog(user_data, "Librarian")  
+            result = dialog.exec()
+            # If accept button was pressed
+            if result == QDialog.DialogCode.Accepted:
+                user_id = user_data["_id"]
+                username_text = dialog.username_input.text()
+                first_name_text = dialog.first_name_input.text()
+                last_name_text = dialog.last_name_input.text()
+                ssn_text = dialog.ssn_input.text()
+                address_text = dialog.address_input.text()
+                # Check if any information has been changed
+                if (
+                    username_text == user_data["username"] and
+                    first_name_text == user_data["first_name"] and
+                    last_name_text == user_data["last_name"] and
+                    ssn_text == user_data["ssn"] and
+                    address_text == user_data["address"]
+                ):
+                    QMessageBox.information(self, "No Changes", "No information has been changed.")
+                    return
+                # If the password field was empty
+                password = user_data["password"]
+                # Check if all fields are filled in
+                if any(not field for field in [username_text, password, first_name_text, last_name_text, ssn_text, address_text]):
+                    QMessageBox.information(self, "Incomplete Information", "All fields must be filled in.")
+                    return
+                # Check if SSN is 10 characters long
+                if not len(ssn_text) == 10:
+                    QMessageBox.information(self, "Account Changes Failed", "The SSN must be 10 characters long (no slash)")
+                    return
+                # Check if the username or SSN already exists in the database
+                inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
+                customer_collection = self.database_manager.db["users"]
+                # Exclude the current user from the query
+                existing_username_query = {"username": username_text, "_id": {"$ne": user_id}}
+                existing_ssn_query = {"ssn": ssn_text, "_id": {"$ne": user_id}}
+                existing_username = customer_collection.find_one(existing_username_query)
+                existing_ssn = customer_collection.find_one(existing_ssn_query)
+                existing_inactivated_username = inactivated_accounts_collection.find_one({"username": username_text, "_id": {"$ne": user_id}})
+                existing_inactivated_ssn = inactivated_accounts_collection.find_one({"ssn": ssn_text, "_id": {"$ne": user_id}})
+                if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn):
+                    QMessageBox.information(self, "Account Changes Failed", "Username and birth number already exist.")
+                elif existing_username or existing_inactivated_username:
+                    QMessageBox.information(self, "Account Changes Failed", "Username already exists.")
+                elif existing_ssn or existing_inactivated_ssn:
+                    QMessageBox.information(self, "Account Changes Failed", "Birth number already exists.")
+                else:
+                    # Update the document in the users collection
+                    updated_data = {
+                        "username": username_text,
+                        "password": password,
+                        "first_name": first_name_text,
+                        "last_name": last_name_text,
+                        "ssn": ssn_text,
+                        "address": address_text,
+                    }
+                    user_collection.update_one({"_id": user_id}, {"$set": updated_data})
+                    self.display_customers()
+                    self.statusBar.showMessage(f"The changes for {username_text}'s account have been applied.", 8000)
+            else:
+                QMessageBox.information(self, "Change of Details Cancelled", "No changes have been made.")
+        else:
+            QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
+
+
+
         
 
 

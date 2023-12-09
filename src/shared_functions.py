@@ -15,14 +15,14 @@ def create_account(self, username, password, first_name, last_name, ssn, address
     # Check if anybody is logged in
     if creator == "Customer" and not GlobalState.current_user == None:
         QMessageBox.information(self, "Registration Failed", "You must be logged out before registering.")
-        return
+        return False
     # Check if any required field is empty
     if any(not field for field in [username, password, creator, first_name, last_name, ssn, address]):
         QMessageBox.information(self, "Registration Failed", "Please fill in all the required fields.")
-        return
+        return False
     if not len(ssn) == 10:
         QMessageBox.information(self, "Registration Failed", "The SSN must be 10 characters long (no slash)")
-        return 
+        return False
     # Check if the username or SSN already exists in the database
     inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
     customer_collection = self.database_manager.db["users"]
@@ -48,11 +48,13 @@ def create_account(self, username, password, first_name, last_name, ssn, address
         if creator == "Customer":
             inactivated_accounts_collection.insert_one(new_customer)
             QMessageBox.information(self, "Customer registered", "Registration was successful. Waiting for approval.")
-            statusBar.showMessage(f"Registration successful. Waiting for librarian approval.", 10000)
+            statusBar.showMessage(f"Registration successful. Waiting for librarian approval.", 8000)
+            return True
         else:
             customer_collection.insert_one(new_customer)
             QMessageBox.information(self, "Customer registered", "Registration was successful.")
-            statusBar.showMessage(f"Registration successful.", 10000)
+            statusBar.showMessage(f"Registration successful.", 8000)
+            return False
 
 def display_book_catalog(self, catalog_table, cursor=None):
     if cursor is None:
@@ -149,7 +151,7 @@ def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_but
             cursor = books_collection.find(query)
             display_book_catalog(self, catalog_table, cursor)
         else:
-            statusBar.showMessage("The minimum character length required for searching is 3.", 10000)
+            statusBar.showMessage("The minimum character length required for searching is 3.", 8000)
             return 
 
 def sort_book_catalog(self, signals, catalog_table, refresh_catalog_button, cancel_button):

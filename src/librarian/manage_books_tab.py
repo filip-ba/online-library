@@ -132,7 +132,7 @@ class ManageBooksTab(QWidget):
             "image_name": image_name
         }
         books_collection.insert_one(new_book)
-        self.statusBar.showMessage(f"You have added a book '{title}' by {author}.", 10000)
+        self.statusBar.showMessage(f"You have added a book '{title}' by {author}.", 8000)
         self.display_books()
 
     def show_edit_book_dialog(self):
@@ -173,7 +173,7 @@ class ManageBooksTab(QWidget):
                 QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
                 return
             # Show a status bar message
-            self.statusBar.showMessage(f"You have edited '{current_title}' by {current_author}.", 10000)
+            self.statusBar.showMessage(f"You have edited '{current_title}' by {current_author}.", 8000)
             # Call a function to update the book information
             self.edit_book(book_data, edited_data)
 
@@ -225,7 +225,7 @@ class ManageBooksTab(QWidget):
         # Delete the book from the 'books' collection
         books_collection = self.database_manager.db["books"]
         book_query = {"title": title, "author": author} 
-        self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 7000)
+        self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 8000)
         books_collection.delete_one(book_query)
         self.display_books()
            
