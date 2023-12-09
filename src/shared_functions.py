@@ -148,7 +148,7 @@ def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_but
             query["year"] = {"$eq": int(year_text)}
             year_formatted =(f"  Year: '{year_text}'")
         if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
-            signals.update_status_bar_widget.emit(f"Showing searches for: {author_formatted}{title_formatted}{year_formatted}")
+            signals.update_status_bar_widget.emit(f"Showing book searches for: {author_formatted}{title_formatted}{year_formatted}")
             refresh_catalog_button.setEnabled(False)   # Disabling the button to refresh search results
             cancel_button.setEnabled(True)    # Disable the button to cancel the search if the search is not in progress
             cursor = books_collection.find(query)
@@ -167,5 +167,5 @@ def sort_book_catalog(self, signals, catalog_table, refresh_catalog_button, canc
         cancel_button.setEnabled(True)
         books_collection = self.database_manager.db["books"]
         cursor = books_collection.find().sort([(sort_attr, 1 if sort_ascend == True else -1)])
-        signals.update_status_bar_widget.emit(f"Sorted by {sort_attr}")
+        signals.update_status_bar_widget.emit(f"Books sorted by {sort_attr}")
         display_book_catalog(self, catalog_table, cursor)

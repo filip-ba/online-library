@@ -5,6 +5,7 @@ from PyQt6.QtCore import Qt
 from database_manager import DatabaseManager
 from dialogs.registration_dialog import RegistrationDialog
 from dialogs.edit_profile_dialog import EditProfileDialog
+from dialogs.sort_customers_dialog import SortCustomersDialog
 from shared_functions import create_account
 
 
@@ -18,15 +19,20 @@ class ManageCustomersTab(QWidget):
         # Singals
         self.signals.librarian_logged_in.connect(self.init_librarian_tab)
         # Connects
-        self.refresh_button.clicked.connect(self.init_librarian_tab)
-        self.add_account_button.clicked.connect(self.register_user)
+        self.refresh_button.clicked.connect(lambda: self.display_customers())
+        self.refresh_button.clicked.connect(self.display_banned_accounts)
+        self.refresh_button.clicked.connect(self.display_inactivated_accounts)
+        self.refresh_button.clicked.connect(self.display_edited_accounts)
         self.confirm_account_button.clicked.connect(self.accept_activation)
         self.decline_account_button.clicked.connect(self.decline_activation)
         self.confirm_changes_button.clicked.connect(self.accept_account_changes)
         self.decline_changes_button.clicked.connect(self.decline_account_changes)
+        self.add_account_button.clicked.connect(self.register_user)
         self.edit_account_button.clicked.connect(self.edit_customer_account)
         self.ban_account_button.clicked.connect(self.ban_account)
         self.unban_account_button.clicked.connect(self.unban_account)
+        self.sort_button.clicked.connect(self.sort_customers)
+        self.cancel_button.clicked.connect(self.cancel_search_or_sort)
 
     def init_librarian_tab(self):
         self.display_customers()
@@ -34,6 +40,9 @@ class ManageCustomersTab(QWidget):
         self.display_inactivated_accounts()
         self.display_edited_accounts()
         self.pending_accounts_message()
+        self.tab_widget.setCurrentIndex(0)
+        self.cancel_button.setEnabled(False)
+        self.refresh_button.setEnabled(True)
 
     def pending_accounts_message(self):
         inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
@@ -77,7 +86,7 @@ class ManageCustomersTab(QWidget):
         books_actions_layout.addWidget(self.show_history_button)
         books_actions_layout.addWidget(self.assign_book_button)
         books_actions_layout.addWidget(self.remove_book_button)
-        # GroupBox for Add Account, Edit Account, Ban Account
+        # GroupBox for Add Account, Edit Account, Ban Account, Unban Account
         group_box_4 = QGroupBox("Account Actions")
         account_actions_layout = QVBoxLayout(group_box_4)
         self.add_account_button = QPushButton("Add Account")
@@ -110,7 +119,7 @@ class ManageCustomersTab(QWidget):
         banned_accounts_layout = QVBoxLayout(banned_accounts_tab)
         banned_accounts_layout.addWidget(self.banned_accounts_table)
         self.tab_widget.addTab(banned_accounts_tab, "Banned Accounts")
-        # List Widget 1
+        # List Widget for Account Activation
         list_layout = QVBoxLayout()
         button_layout = QHBoxLayout()
         self.list_widget_activate_acc = QListWidget()
@@ -122,7 +131,7 @@ class ManageCustomersTab(QWidget):
         list_layout.addWidget(list_title_1)
         list_layout.addWidget(self.list_widget_activate_acc)
         list_layout.addLayout(button_layout)
-        # List Widget 2
+        # List Widget for Account Changes Confirmation
         list_layout_2 = QVBoxLayout()
         button_layout_2 = QHBoxLayout()
         self.list_widget_confirm_changes = QListWidget()
@@ -164,11 +173,12 @@ class ManageCustomersTab(QWidget):
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)
 
-    def display_customers(self):
-        users_collection = self.database_manager.db["users"]
-        customer_data = users_collection.find()
+    def display_customers(self, cursor = None):
+        if cursor is None:
+            users_collection = self.database_manager.db["users"]
+            cursor = users_collection.find()
         self.customers_table.setRowCount(0)
-        for index, customer in enumerate(customer_data):
+        for index, customer in enumerate(cursor):
             self.customers_table.insertRow(index)
             for col, prop in enumerate(["username", "first_name", "last_name", "ssn", "address"]):
                 self.customers_table.setItem(index, col, QTableWidgetItem(str(customer[prop])))
@@ -443,6 +453,31 @@ class ManageCustomersTab(QWidget):
                 self.display_banned_accounts()
         else:
             QMessageBox.warning(self, "Unban Account Failed", "User not found in the banned accounts collection.")
+            
+    def sort_customers(self):
+        dialog = SortCustomersDialog()
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            combo_box_input = dialog.attribute_combo.currentText().lower()
+            if combo_box_input == "first name":
+                sort_attr = "first_name"
+            elif combo_box_input == "last name":
+                sort_attr = "last_name"
+            elif combo_box_input == "birth number":
+                sort_attr = "ssn"
+            sort_ascend =  dialog.ascending_radio.isChecked()
+            self.refresh_button.setEnabled(False) 
+            self.cancel_button.setEnabled(True)
+            users_collection = self.database_manager.db["users"]
+            cursor = users_collection.find().sort([(sort_attr, 1 if sort_ascend == True else -1)])
+            self.signals.update_status_bar_widget_2.emit(f"Customers sorted by {combo_box_input}")
+            self.display_customers(cursor)
+
+    def cancel_search_or_sort(self):
+        self.refresh_button.setEnabled(True)
+        self.cancel_button.setEnabled(False) 
+        self.signals.update_status_bar_widget_2.emit("")
+        self.display_customers()
 
         
 

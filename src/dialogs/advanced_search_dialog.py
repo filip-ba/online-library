@@ -21,7 +21,6 @@ class AdvancedSearchDialog(QDialog):
         title_label = QLabel("Advanced Search")
         title_label.setStyleSheet("font-size: 14pt;")
         title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title_label.setToolTip("Search books based on author, title, and year. Minimum length: 3 characters.")
         layout.addWidget(title_label)
         # Form layout for author, title, and year fields
         form_layout = QFormLayout()
@@ -41,7 +40,7 @@ class AdvancedSearchDialog(QDialog):
         form_layout.addRow(self.year_label, self.year_input)
         form_layout.setSpacing(10)
         layout.addLayout(form_layout)
-        layout.addSpacerItem(QSpacerItem(10, 10))   # Adding a space after the form layout 
+        layout.addSpacerItem(QSpacerItem(10, 10))  
         # Buttons
         button_layout = QHBoxLayout()
         self.ok_button = QPushButton("Ok")

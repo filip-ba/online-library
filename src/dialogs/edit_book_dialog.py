@@ -21,7 +21,6 @@ class EditBookDialog(QDialog):
         window_title_label = QLabel("Edit Book Information")
         window_title_label.setStyleSheet("font-size: 14pt;")
         window_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        window_title_label.setToolTip("You can change the details of the book.")
         layout.addWidget(window_title_label)
         # Form layout
         form_layout = QFormLayout()

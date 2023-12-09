@@ -16,6 +16,7 @@ class MainWindow(QMainWindow):
         # Connects
         self.signals.update_status.connect(self.update_status_label)
         self.signals.update_status_bar_widget.connect(self.update_status_bar_widget)
+        self.signals.update_status_bar_widget_2.connect(self.update_status_bar_widget_2)
         self.signals.tab_state.connect(self.set_tab_state)
 
     def create_ui(self):
@@ -31,6 +32,8 @@ class MainWindow(QMainWindow):
         self.statusBar.addPermanentWidget(self.status_label)
         self.status_bar_widget = QLabel("")
         self.statusBar.addWidget(self.status_bar_widget)
+        self.status_bar_widget_2 = QLabel("")
+        self.statusBar.addWidget(self.status_bar_widget_2)
         # Tab Widget for librarian, customer, and login/signup views
         self.tab_widget = QTabWidget(self)
         librarian_tab = LibrarianTab(self.database_manager, self.statusBar, self.signals)
@@ -48,7 +51,7 @@ class MainWindow(QMainWindow):
         edit_menu = menu_bar.addMenu("Edit")
         view_menu = menu_bar.addMenu("View")
         user_menu = menu_bar.addMenu("User Menu")
-        # Actions
+        # MeenuBar actions
         self.quit_action = QAction("Quit", self)
         file_menu.addAction(self.quit_action)  
         self.quit_action.triggered.connect(self.close)
@@ -61,6 +64,9 @@ class MainWindow(QMainWindow):
 
     def update_status_bar_widget(self, message):
         self.status_bar_widget.setText(message)
+
+    def update_status_bar_widget_2(self, message):
+        self.status_bar_widget_2.setText(message)
 
     def update_status_label(self, message):
         self.status_label.setText(message)
@@ -77,6 +83,7 @@ class MainWindow(QMainWindow):
 class AppSignals(QObject):
     update_status = pyqtSignal(str)
     update_status_bar_widget = pyqtSignal(str)
+    update_status_bar_widget_2 = pyqtSignal(str)
     customer_logged_in = pyqtSignal()
     librarian_logged_in = pyqtSignal()
     tab_state = pyqtSignal(int, int, int)

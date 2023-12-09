@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import ( 
     QDialog, QLabel, QLineEdit, QPushButton, QSpacerItem, 
-    QHBoxLayout, QVBoxLayout, QFormLayout, QFileDialog, QWidget )
+    QHBoxLayout, QVBoxLayout, QFormLayout, QFileDialog )
 from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator
 from PyQt6.QtCore import Qt, QRegularExpression, QFileInfo
 from PyQt6.QtWidgets import QFileDialog
@@ -13,7 +13,7 @@ class AddBookDialog(QDialog):
         # Connects
         self.ok_button.clicked.connect(self.accept)
         self.cancel_button.clicked.connect(self.reject)
-        # Variables for importing images
+        # Variables for importing the image
         self.image_name = ""
         self.path_name = ""
 
@@ -24,7 +24,6 @@ class AddBookDialog(QDialog):
         window_title_label = QLabel("Add New Book")
         window_title_label.setStyleSheet("font-size: 14pt;")
         window_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        window_title_label.setToolTip("You can add a new book to the catalog.")
         layout.addWidget(window_title_label)
         # Form layout
         form_layout = QFormLayout()
@@ -64,7 +63,6 @@ class AddBookDialog(QDialog):
         import_layout_1.setContentsMargins(0, 0, 0, 10)
         self.image_name_label = QLabel("File: ")
         self.import_button = QPushButton("Import Image")
-        self.image_name_label.setToolTip("Only accepts png, jpg and bmp files.")
         self.import_image_label = QLabel("Image: ")
         import_layout_1.addWidget(self.import_image_label)
         import_layout_2.addWidget(self.import_button)
@@ -72,11 +70,10 @@ class AddBookDialog(QDialog):
         import_layout_1.addLayout(import_layout_2)
         import_layout_1.setAlignment(Qt.AlignmentFlag.AlignLeft)
         self.import_button.clicked.connect(self.get_image_name)
-        # Adding the form layout 
+        # Adding layouts into the main layout
         form_layout.setSpacing(10)  # Adding a space between the forms
         layout.addLayout(form_layout)
         layout.addSpacerItem(QSpacerItem(10, 10))   # Adding a space after the form layout
-        # Adding the image import layout
         layout.addLayout(import_layout_1)
         # Buttons
         button_layout = QHBoxLayout()

@@ -1,5 +1,6 @@
 from pymongo import MongoClient
 
+
 class DatabaseManager:
     def __init__(self, connection_string, database_name):
         self.client = MongoClient(connection_string)

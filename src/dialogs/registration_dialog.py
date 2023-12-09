@@ -20,7 +20,6 @@ class RegistrationDialog(QDialog):
         window_title_label = QLabel("Register a Customer")
         window_title_label.setStyleSheet("font-size: 14pt;")
         window_title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        window_title_label.setToolTip("You can register a customer.")
         layout.addWidget(window_title_label)
         # Form layout
         form_layout = QFormLayout()
