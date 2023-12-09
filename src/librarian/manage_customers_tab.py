@@ -2,9 +2,7 @@ from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QListWidget, QListWidgetItem, QScrollArea,  
       QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView )
 from PyQt6.QtCore import Qt
-import bcrypt
 from database_manager import DatabaseManager
-from global_state import GlobalState
 from dialogs.registration_dialog import RegistrationDialog
 from dialogs.edit_profile_dialog import EditProfileDialog
 from shared_functions import create_account
@@ -27,14 +25,17 @@ class ManageCustomersTab(QWidget):
         self.confirm_changes_button.clicked.connect(self.accept_account_changes)
         self.decline_changes_button.clicked.connect(self.decline_account_changes)
         self.edit_account_button.clicked.connect(self.edit_customer_account)
+        self.ban_account_button.clicked.connect(self.ban_account)
+        self.unban_account_button.clicked.connect(self.unban_account)
 
     def init_librarian_tab(self):
         self.display_customers()
+        self.display_banned_accounts()
         self.display_inactivated_accounts()
         self.display_edited_accounts()
-        self.pending_accounts()
+        self.pending_accounts_message()
 
-    def pending_accounts(self):
+    def pending_accounts_message(self):
         inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
         pending_accounts_count = inactivated_accounts_collection.count_documents({})
         if pending_accounts_count > 0:
@@ -82,21 +83,33 @@ class ManageCustomersTab(QWidget):
         self.add_account_button = QPushButton("Add Account")
         self.edit_account_button = QPushButton("Edit Account")
         self.ban_account_button = QPushButton("Ban Account")
+        self.unban_account_button = QPushButton("Unban Account")
         account_actions_layout.addWidget(self.add_account_button)
         account_actions_layout.addWidget(self.edit_account_button)
         account_actions_layout.addWidget(self.ban_account_button)
+        account_actions_layout.addWidget(self.unban_account_button)
         # QTableWidget for Customer Accounts
-        self.customers_table = QTableWidget()
         self.tab_widget = QTabWidget()
+        self.tab_widget.setMinimumWidth(375)
+        self.customers_table = QTableWidget()
         customer_table_tab = QWidget()
         self.customers_table.setColumnCount(5) 
         self.customers_table.setHorizontalHeaderLabels(["Username", "First Name", "Last Name", "SSN", "Address"])
-        self.tab_widget.setMinimumWidth(375)
         header = self.customers_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         customer_table_layout = QVBoxLayout(customer_table_tab)
         customer_table_layout.addWidget(self.customers_table)
         self.tab_widget.addTab(customer_table_tab, "Customer Table")
+        # QTableWidget for Banned Accounts
+        self.banned_accounts_table = QTableWidget()
+        banned_accounts_tab = QWidget()
+        self.banned_accounts_table.setColumnCount(5)
+        self.banned_accounts_table.setHorizontalHeaderLabels(["Username", "First Name", "Last Name", "SSN", "Address"])
+        header_2 = self.banned_accounts_table.horizontalHeader()
+        header_2.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        banned_accounts_layout = QVBoxLayout(banned_accounts_tab)
+        banned_accounts_layout.addWidget(self.banned_accounts_table)
+        self.tab_widget.addTab(banned_accounts_tab, "Banned Accounts")
         # List Widget 1
         list_layout = QVBoxLayout()
         button_layout = QHBoxLayout()
@@ -135,9 +148,9 @@ class ManageCustomersTab(QWidget):
         scroll_wrapper_layout.addWidget(scroll_area)
         # Add widgets to main layout
         left_layout.addWidget(group_box_1)
-        left_layout.addWidget(group_box_2)
         left_layout.addWidget(group_box_3)
         left_layout.addWidget(group_box_4)
+        left_layout.addWidget(group_box_2)
         middle_layout.addWidget(self.tab_widget)
         right_layout.addLayout(list_layout)
         right_layout.addLayout(list_layout_2)
@@ -160,6 +173,16 @@ class ManageCustomersTab(QWidget):
             for col, prop in enumerate(["username", "first_name", "last_name", "ssn", "address"]):
                 self.customers_table.setItem(index, col, QTableWidgetItem(str(customer[prop])))
         self.customers_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+    def display_banned_accounts(self):
+        banned_accounts_collection = self.database_manager.db["banned_accounts"]
+        banned_accounts_data = banned_accounts_collection.find()
+        self.banned_accounts_table.setRowCount(0)
+        for index, customer in enumerate(banned_accounts_data):
+            self.banned_accounts_table.insertRow(index)
+            for col, prop in enumerate(["username", "first_name", "last_name", "ssn", "address"]):
+                self.banned_accounts_table.setItem(index, col, QTableWidgetItem(str(customer[prop])))
+        self.banned_accounts_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
     def display_inactivated_accounts(self):
         inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
@@ -294,7 +317,6 @@ class ManageCustomersTab(QWidget):
         selected_row = self.customers_table.currentRow()
         number_of_selected_rows = len(self.customers_table.selectionModel().selectedRows())
         if number_of_selected_rows != 1:
-            QMessageBox.warning(self, "Selection Error", "Please select a customer from the table.")
             return
         account_username = self.customers_table.item(selected_row, 0).text()
         user_collection = self.database_manager.db["users"]
@@ -335,6 +357,7 @@ class ManageCustomersTab(QWidget):
                 # Check if the username or SSN already exists in the database
                 inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
                 customer_collection = self.database_manager.db["users"]
+                banned_accounts_collection = self.database_manager.db["banned_accounts"]
                 # Exclude the current user from the query
                 existing_username_query = {"username": username_text, "_id": {"$ne": user_id}}
                 existing_ssn_query = {"ssn": ssn_text, "_id": {"$ne": user_id}}
@@ -342,12 +365,14 @@ class ManageCustomersTab(QWidget):
                 existing_ssn = customer_collection.find_one(existing_ssn_query)
                 existing_inactivated_username = inactivated_accounts_collection.find_one({"username": username_text, "_id": {"$ne": user_id}})
                 existing_inactivated_ssn = inactivated_accounts_collection.find_one({"ssn": ssn_text, "_id": {"$ne": user_id}})
-                if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn):
-                    QMessageBox.information(self, "Account Changes Failed", "Username and birth number already exist.")
-                elif existing_username or existing_inactivated_username:
-                    QMessageBox.information(self, "Account Changes Failed", "Username already exists.")
-                elif existing_ssn or existing_inactivated_ssn:
-                    QMessageBox.information(self, "Account Changes Failed", "Birth number already exists.")
+                existing_banned_username = banned_accounts_collection.find_one({"username": username_text, "_id": {"$ne": user_id}})
+                existing_banned_ssn = banned_accounts_collection.find_one({"ssn": ssn_text, "_id": {"$ne": user_id}})
+                if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn) or (existing_banned_username and existing_banned_ssn):
+                    QMessageBox.information(self, "Registration Failed", "Username and birth number already exist.")
+                elif existing_username or existing_inactivated_username or existing_banned_username:
+                    QMessageBox.information(self, "Registration Failed", "Username already exists.")
+                elif existing_ssn or existing_inactivated_ssn or existing_banned_ssn:
+                    QMessageBox.information(self, "Registration Failed", "Birth number already exists.")
                 else:
                     # Update the document in the users collection
                     updated_data = {
@@ -366,7 +391,58 @@ class ManageCustomersTab(QWidget):
         else:
             QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
 
+    def ban_account(self):
+        selected_row = self.customers_table.currentRow()
+        number_of_selected_rows = len(self.customers_table.selectionModel().selectedRows())
+        if number_of_selected_rows != 1:
+            return
+        account_username = self.customers_table.item(selected_row, 0).text()
+        user_collection = self.database_manager.db["users"]
+        query = {"username": account_username}
+        user_data = user_collection.find_one(query)
+        user_id = user_data["_id"]
+        banned_accounts_collection = self.database_manager.db["banned_accounts"]
+        # Check if the user exists in the database (hasn't been banned/deleted)
+        if user_data:
+            confirm_message = f"Are you sure you want to ban the account of '{user_data["username"]}'?"
+            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if confirm_result == QMessageBox.StandardButton.Yes:
+                # Copy the user data to banned_accounts collection
+                banned_accounts_collection.insert_one(user_data)
+                # Remove the user data from the users collection
+                user_collection.delete_one({"_id": user_id})
+                self.statusBar.showMessage(f"The account of {user_data['username']} has been banned.", 8000)
+                self.display_customers()
+                self.display_banned_accounts()
+        else:
+            QMessageBox.warning(self, "Ban Account Failed", "User not found in the database.")
 
+    def unban_account(self):
+        selected_row = self.banned_accounts_table.currentRow()
+        number_of_selected_rows = len(self.banned_accounts_table.selectionModel().selectedRows())
+        if number_of_selected_rows != 1:
+            return
+        account_username = self.banned_accounts_table.item(selected_row, 0).text()
+        banned_accounts_collection = self.database_manager.db["banned_accounts"]
+        query = {"username": account_username}
+        user_data = banned_accounts_collection.find_one(query)
+        user_id = user_data["_id"]
+        user_collection = self.database_manager.db["users"]
+        # Check if the user exists in the database (hasn't been banned/deleted)
+        if user_data:
+            confirm_message = f"Are you sure you want to unban the account of '{user_data['username']}'?"
+            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            if confirm_result == QMessageBox.StandardButton.Yes:
+                # Copy the user data back to users collection
+                user_collection.insert_one(user_data)
+                # Remove the user data from banned_accounts collection
+                banned_accounts_collection.delete_one({"_id": user_id})
+                self.statusBar.showMessage(f"The account of {user_data['username']} has been unbanned.", 8000)
+                # Refresh the tables
+                self.display_customers()
+                self.display_banned_accounts()
+        else:
+            QMessageBox.warning(self, "Unban Account Failed", "User not found in the banned accounts collection.")
 
         
 

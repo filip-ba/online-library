@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
 
     def create_ui(self):
         self.setWindowTitle("Online Library Management System")
-        self.setGeometry(50, 50, 800, 650)
+        self.setGeometry(50, 50, 1000, 800)
         # Create main widget and layout
         main_widget = QWidget(self)
         self.setCentralWidget(main_widget)

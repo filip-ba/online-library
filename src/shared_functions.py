@@ -26,15 +26,18 @@ def create_account(self, username, password, first_name, last_name, ssn, address
     # Check if the username or SSN already exists in the database
     inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
     customer_collection = self.database_manager.db["users"]
+    banned_accounts_collection = self.database_manager.db["banned_accounts"]
     existing_username = customer_collection.find_one({"username": username})
     existing_ssn = customer_collection.find_one({"ssn": ssn})
     existing_inactivated_username = inactivated_accounts_collection.find_one({"username": username})
     existing_inactivated_ssn = inactivated_accounts_collection.find_one({"ssn": ssn})
-    if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn):
+    existing_banned_username = banned_accounts_collection.find_one({"username": username})
+    existing_banned_ssn = banned_accounts_collection.find_one({"ssn": ssn})
+    if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn) or (existing_banned_username and existing_banned_ssn):
         QMessageBox.information(self, "Registration Failed", "Username and birth number already exist.")
-    elif existing_username or existing_inactivated_username :
+    elif existing_username or existing_inactivated_username or existing_banned_username:
         QMessageBox.information(self, "Registration Failed", "Username already exists.")
-    elif existing_ssn or existing_inactivated_ssn:
+    elif existing_ssn or existing_inactivated_ssn or existing_banned_ssn:
         QMessageBox.information(self, "Registration Failed", "Birth number already exists.")
     else:
         new_customer = {

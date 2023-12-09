@@ -53,7 +53,7 @@ class CustomerTab(QWidget):
     def create_customer_ui(self):
         # Layout for the entire Customer tab
         layout = QVBoxLayout()
-        # Top layout for "Advanced Search" and "Edit Profile" buttons
+        # Top layout 
         top_layout = QHBoxLayout()
         self.advanced_search_button = QPushButton("Open Search")
         self.sort_books_button = QPushButton("Open Sort Options")
@@ -63,7 +63,7 @@ class CustomerTab(QWidget):
         top_layout.addWidget(self.sort_books_button)
         top_layout.addWidget(self.cancel_button)
         top_layout.addWidget(self.refresh_catalog_button)
-        # Middle layout for the QTabWidget
+        # Middle layout 
         tab_layout = QHBoxLayout()
         self.tab_widget = QTabWidget()
         catalog_tab = QWidget()
@@ -84,7 +84,6 @@ class CustomerTab(QWidget):
         self.borrowed_books_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Borrow Date", "Due Date"])
         header = self.borrowed_books_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        # Add code to populate borrowed_books_table with data from MongoDB
         borrowed_books_layout.addWidget(self.borrowed_books_table)
         # Layout for the History tab
         history_layout = QVBoxLayout(history_tab)
@@ -93,14 +92,13 @@ class CustomerTab(QWidget):
         self.history_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Date Borrowed"])
         header = self.history_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        # Add code to populate history_table with data from MongoDB
         history_layout.addWidget(self.history_table)
         # Add tabs to the QTabWidget
         self.tab_widget.addTab(catalog_tab, "Catalog")
         self.tab_widget.addTab(borrowed_books_tab, "Borrowed Books")
         self.tab_widget.addTab(history_tab, "History")
         tab_layout.addWidget(self.tab_widget)
-        # Bottom layout for "Borrow" and "Return" buttons
+        # Bottom layout 
         bottom_layout = QHBoxLayout()
         self.borrow_button = QPushButton("Borrow")
         self.return_button = QPushButton("Return")
@@ -370,6 +368,7 @@ class CustomerTab(QWidget):
                 # Check if the username or SSN already exists in the database
                 inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
                 customer_collection = self.database_manager.db["users"]
+                banned_accounts_collection = self.database_manager.db["banned_accounts"]
                 # Exclude the current user from the query
                 existing_username_query = {"username": username_text, "_id": {"$ne": GlobalState.current_user}}
                 existing_ssn_query = {"ssn": ssn_text, "_id": {"$ne": GlobalState.current_user}}
@@ -377,12 +376,14 @@ class CustomerTab(QWidget):
                 existing_ssn = customer_collection.find_one(existing_ssn_query)
                 existing_inactivated_username = inactivated_accounts_collection.find_one({"username": username_text, "_id": {"$ne": GlobalState.current_user}})
                 existing_inactivated_ssn = inactivated_accounts_collection.find_one({"ssn": ssn_text, "_id": {"$ne": GlobalState.current_user}})
-                if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn):
-                    QMessageBox.information(self, "Account Changes Failed", "Username and birth number already exist.")
-                elif existing_username or existing_inactivated_username :
-                    QMessageBox.information(self, "Account Changes Failed", "Username already exists.")
-                elif existing_ssn or existing_inactivated_ssn:
-                    QMessageBox.information(self, "Account Changes Failed", "Birth number already exists.")
+                existing_banned_username = banned_accounts_collection.find_one({"username": username_text, "_id": {"$ne": GlobalState.current_user}})
+                existing_banned_ssn = banned_accounts_collection.find_one({"ssn": ssn_text, "_id": {"$ne": GlobalState.current_user}})
+                if (existing_username and existing_ssn) or (existing_inactivated_username and existing_inactivated_ssn) or (existing_banned_username and existing_banned_ssn):
+                    QMessageBox.information(self, "Registration Failed", "Username and birth number already exist.")
+                elif existing_username or existing_inactivated_username or existing_banned_username:
+                    QMessageBox.information(self, "Registration Failed", "Username already exists.")
+                elif existing_ssn or existing_inactivated_ssn or existing_banned_ssn:
+                    QMessageBox.information(self, "Registration Failed", "Birth number already exists.")
                 else:
                     edited_data = {
                         "_id" : GlobalState.current_user,
