@@ -8,7 +8,7 @@ import bcrypt
 import os
 from global_state import GlobalState
 from dialogs.advanced_search_dialog import AdvancedSearchDialog
-from dialogs.sort_books_dialog import SortBooksDialog
+from dialogs.sort_dialog import SortDialog
 
 
 def create_account(self, username, password, first_name, last_name, ssn, address, creator, statusBar):
@@ -158,7 +158,8 @@ def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_but
             return 
 
 def sort_book_catalog(self, signals, catalog_table, refresh_catalog_button, cancel_button):
-    dialog = SortBooksDialog()
+    combo_box_items = ["Title", "Author", "Year"]
+    dialog = SortDialog(combo_box_items)
     result = dialog.exec()
     if result == QDialog.DialogCode.Accepted:
         sort_attr = dialog.attribute_combo.currentText().lower()

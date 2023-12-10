@@ -4,9 +4,10 @@ from PyQt6.QtWidgets import (
 from PyQt6.QtCore import Qt
 
 
-class SortCustomersDialog(QDialog):
-    def __init__(self):
+class SortDialog(QDialog):
+    def __init__(self, combo_box_items):
         super().__init__()
+        self.combo_box_items = combo_box_items
         self.create_dialog_ui()
         # Connects
         self.ok_button.clicked.connect(self.accept)
@@ -24,8 +25,7 @@ class SortCustomersDialog(QDialog):
         combo_box_layout = QVBoxLayout()
         attribute_label = QLabel("Select Attribute:")
         self.attribute_combo = QComboBox()
-        self.attribute_combo.setToolTip("Sort customers based on first name, last name, address and birth number.")
-        self.attribute_combo.addItems(["First Name", "Last Name", "Address" ,"Birth Number"])
+        self.attribute_combo.addItems(self.combo_box_items)
         combo_box_layout.addWidget(attribute_label)
         combo_box_layout.addWidget(self.attribute_combo)
         combo_box_layout.addSpacing(10)

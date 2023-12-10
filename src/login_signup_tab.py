@@ -130,7 +130,8 @@ class LoginSignupTab(QWidget):
         GlobalState.current_user = None
         GlobalState.current_role = None
         self.signals.update_status.emit("Not logged in")
-        self.signals.update_status_bar_widget.emit("")  # Clear the status bar's widget after logging out
+        self.signals.update_status_bar_widget.emit("")  # Clear the status bar's widgets after logging out
+        self.signals.update_status_bar_widget_2.emit("")  
         self.statusBar.clearMessage()
         self.signals.tab_state.emit(1, 0, 0)        # Disabled tab #1
         self.signals.tab_state.emit(2, 0, 0)        # Disabled tab #2

@@ -5,7 +5,7 @@ from PyQt6.QtCore import Qt
 from database_manager import DatabaseManager
 from dialogs.registration_dialog import RegistrationDialog
 from dialogs.edit_profile_dialog import EditProfileDialog
-from dialogs.sort_customers_dialog import SortCustomersDialog
+from dialogs.sort_dialog import SortDialog
 from shared_functions import create_account
 
 
@@ -455,7 +455,8 @@ class ManageCustomersTab(QWidget):
             QMessageBox.warning(self, "Unban Account Failed", "User not found in the banned accounts collection.")
             
     def sort_customers(self):
-        dialog = SortCustomersDialog()
+        combo_box_items = ["First Name", "Last Name", "Address" ,"Birth Number"]
+        dialog = SortDialog(combo_box_items)
         result = dialog.exec()
         if result == QDialog.DialogCode.Accepted:
             combo_box_input = dialog.attribute_combo.currentText().lower()
