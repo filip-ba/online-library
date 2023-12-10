@@ -7,7 +7,7 @@ from pathlib import Path
 import bcrypt  
 import os
 from global_state import GlobalState
-from dialogs.advanced_search_dialog import AdvancedSearchDialog
+from dialogs.search_dialog import SearchDialog
 from dialogs.sort_dialog import SortDialog
 
 
@@ -127,12 +127,17 @@ def display_book_history(self, history_table):
     history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
 def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_button, cancel_button):
-    dialog = AdvancedSearchDialog()
+    role = "Customer"
+    label_1 = "Author:"
+    label_2 = "Title:"
+    label_3 = "Year:"
+    label_4 = ""
+    dialog = SearchDialog(role, label_1, label_2, label_3, label_4)
     result = dialog.exec()
     if result == QDialog.DialogCode.Accepted:
-        author_text = dialog.author_input.text()
-        title_text = dialog.title_input.text()
-        year_text = dialog.year_input.text()
+        author_text = dialog.input_1.text()
+        title_text = dialog.input_2.text()
+        year_text = dialog.input_3.text()
         books_collection = self.database_manager.db["books"]
         author_formatted = ""
         title_formatted = ""
@@ -145,7 +150,7 @@ def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_but
             query["title"] = {"$regex": title_text, "$options": "i"}
             title_formatted =(f"  Title: '{title_text}'")
         if len(year_text) >= 3:
-            query["year"] = {"$eq": int(year_text)}
+            query["year"] = {"$regex": year_text, "$options": "i"}
             year_formatted =(f"  Year: '{year_text}'")
         if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
             signals.update_status_bar_widget.emit(f"Showing book searches for: {author_formatted}{title_formatted}{year_formatted}")

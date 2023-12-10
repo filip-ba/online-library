@@ -40,13 +40,13 @@ class RegistrationDialog(QDialog):
         first_name_signup_title = QLabel("First Name:")
         self.first_name_signup = QLineEdit()
         self.first_name_signup.setMaxLength(40)
-        self.first_name_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]+")))
+        self.first_name_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[^0-9]+")))
         form_layout.addRow(first_name_signup_title, self.first_name_signup)
         # Last Name
         last_name_signup_title = QLabel("Last Name:")
         self.last_name_signup = QLineEdit()
         self.last_name_signup.setMaxLength(40)
-        self.last_name_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]+")))
+        self.last_name_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[^0-9]+")))
         form_layout.addRow(last_name_signup_title, self.last_name_signup)
         # SSN
         ssn_signup_title = QLabel("SSN:")
@@ -58,7 +58,6 @@ class RegistrationDialog(QDialog):
         address_signup_title = QLabel("Address:")
         self.address_signup = QLineEdit()
         self.address_signup.setMaxLength(60)
-        self.address_signup.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9 ,.-]+")))
         form_layout.addRow(address_signup_title, self.address_signup)
         # Adding the form layout to the vertical layout
         form_layout.setSpacing(10)  # Adding a space between the forms

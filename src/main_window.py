@@ -18,6 +18,7 @@ class MainWindow(QMainWindow):
         self.signals.update_status_bar_widget.connect(self.update_status_bar_widget)
         self.signals.update_status_bar_widget_2.connect(self.update_status_bar_widget_2)
         self.signals.tab_state.connect(self.set_tab_state)
+        self.signals.log_out.connect(self.login_signup_tab.logout)
 
     def create_ui(self):
         self.setWindowTitle("Online Library Management System")
@@ -38,8 +39,8 @@ class MainWindow(QMainWindow):
         self.tab_widget = QTabWidget(self)
         librarian_tab = LibrarianTab(self.database_manager, self.statusBar, self.signals)
         customer_tab = CustomerTab(self.database_manager, self.statusBar, self.signals)
-        login_signup_tab = LoginSignupTab(self.database_manager, self.statusBar, self.signals)
-        self.tab_widget.addTab(login_signup_tab, "Login/Sign up")
+        self.login_signup_tab = LoginSignupTab(self.database_manager, self.statusBar, self.signals)
+        self.tab_widget.addTab(self.login_signup_tab, "Login/Sign up")
         self.tab_widget.addTab(librarian_tab, "Librarian")
         self.tab_widget.addTab(customer_tab, "Customer")
         self.tab_widget.setTabEnabled(1, False)
@@ -57,7 +58,7 @@ class MainWindow(QMainWindow):
         self.quit_action.triggered.connect(self.close)
         self.logout_action = QAction("Logout", self)
         user_menu.addAction(self.logout_action) 
-        self.logout_action.triggered.connect(login_signup_tab.logout)
+        self.logout_action.triggered.connect(self.login_signup_tab.logout)
         
     def closeEvent(self, event):
         event.accept()
@@ -79,7 +80,6 @@ class MainWindow(QMainWindow):
         self.tab_widget.setTabEnabled(enable_tab, True)
         self.tab_widget.setCurrentIndex(set_tab)    
 
-
 class AppSignals(QObject):
     update_status = pyqtSignal(str)
     update_status_bar_widget = pyqtSignal(str)
@@ -87,3 +87,4 @@ class AppSignals(QObject):
     customer_logged_in = pyqtSignal()
     librarian_logged_in = pyqtSignal()
     tab_state = pyqtSignal(int, int, int)
+    log_out = pyqtSignal()

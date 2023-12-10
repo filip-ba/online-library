@@ -127,7 +127,7 @@ class ManageBooksTab(QWidget):
             "title": title,
             "author": author,
             "pages": int(pages),
-            "year": int(year),
+            "year": year,
             "items": int(items),
             "image_name": image_name
         }
@@ -159,7 +159,7 @@ class ManageBooksTab(QWidget):
             title = title_text if title_text else None
             author = author_text if author_text else None
             pages = int(pages_text) if pages_text else None
-            year = int(year_text) if year_text else None
+            year = year_text if year_text else None
             items = int(items_text) if items_text else None
             edited_data = {
                 "title": title,

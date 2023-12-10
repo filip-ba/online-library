@@ -43,13 +43,13 @@ class EditProfileDialog(QDialog):
         first_name_label = QLabel("First Name:")
         self.first_name_input = QLineEdit(self.user_data.get("first_name", ""))
         self.first_name_input.setMaxLength(40)
-        self.first_name_input.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]+")))
+        self.first_name_input.setValidator(QRegularExpressionValidator(QRegularExpression("[^0-9]+")))
         form_layout.addRow(first_name_label, self.first_name_input)
         # Last Name
         last_name_label = QLabel("Last Name:")
         self.last_name_input = QLineEdit(self.user_data.get("last_name", ""))
         self.last_name_input.setMaxLength(40)
-        self.last_name_input.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z]+")))
+        self.last_name_input.setValidator(QRegularExpressionValidator(QRegularExpression("[^0-9]+")))
         form_layout.addRow(last_name_label, self.last_name_input)
         # SSN
         ssn_label = QLabel("SSN:")
@@ -61,7 +61,6 @@ class EditProfileDialog(QDialog):
         address_label = QLabel("Address:")
         self.address_input = QLineEdit(self.user_data.get("address", ""))
         self.address_input.setMaxLength(60)
-        self.address_input.setValidator(QRegularExpressionValidator(QRegularExpression("[A-Za-z0-9 ,.-]+")))
         form_layout.addRow(address_label, self.address_input)
         # Adding the form layout to the vertical layout
         form_layout.setSpacing(10)  # Adding a space between the forms

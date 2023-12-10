@@ -6,6 +6,7 @@ from database_manager import DatabaseManager
 from dialogs.registration_dialog import RegistrationDialog
 from dialogs.edit_profile_dialog import EditProfileDialog
 from dialogs.sort_dialog import SortDialog
+from dialogs.search_dialog import SearchDialog
 from shared_functions import create_account
 
 
@@ -32,6 +33,7 @@ class ManageCustomersTab(QWidget):
         self.ban_account_button.clicked.connect(self.ban_account)
         self.unban_account_button.clicked.connect(self.unban_account)
         self.sort_button.clicked.connect(self.sort_customers)
+        self.search_button.clicked.connect(self.search_customers)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
 
     def init_librarian_tab(self):
@@ -173,25 +175,33 @@ class ManageCustomersTab(QWidget):
         main_layout.addLayout(right_layout)
         self.setLayout(main_layout)
 
-    def display_customers(self, cursor = None):
+    def display_customers(self, cursor=None):
         if cursor is None:
             users_collection = self.database_manager.db["users"]
             cursor = users_collection.find()
         self.customers_table.setRowCount(0)
+        self.customers_table.setWordWrap(True) 
         for index, customer in enumerate(cursor):
             self.customers_table.insertRow(index)
             for col, prop in enumerate(["username", "first_name", "last_name", "ssn", "address"]):
-                self.customers_table.setItem(index, col, QTableWidgetItem(str(customer[prop])))
+                item = QTableWidgetItem(str(customer[prop]))
+                item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter) 
+                self.customers_table.setItem(index, col, item)
+            self.customers_table.setRowHeight(index, 50)
         self.customers_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
     def display_banned_accounts(self):
         banned_accounts_collection = self.database_manager.db["banned_accounts"]
         banned_accounts_data = banned_accounts_collection.find()
         self.banned_accounts_table.setRowCount(0)
+        self.customers_table.setWordWrap(True) 
         for index, customer in enumerate(banned_accounts_data):
             self.banned_accounts_table.insertRow(index)
             for col, prop in enumerate(["username", "first_name", "last_name", "ssn", "address"]):
-                self.banned_accounts_table.setItem(index, col, QTableWidgetItem(str(customer[prop])))
+                item = QTableWidgetItem(str(customer[prop]))
+                item.setTextAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter) 
+                self.banned_accounts_table.setItem(index, col, item)
+            self.banned_accounts_table.setRowHeight(index, 50)
         self.banned_accounts_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
     def display_inactivated_accounts(self):
@@ -466,6 +476,8 @@ class ManageCustomersTab(QWidget):
                 sort_attr = "last_name"
             elif combo_box_input == "birth number":
                 sort_attr = "ssn"
+            elif combo_box_input == "address":
+                sort_attr = "address"
             sort_ascend =  dialog.ascending_radio.isChecked()
             self.refresh_button.setEnabled(False) 
             self.cancel_button.setEnabled(True)
@@ -473,6 +485,47 @@ class ManageCustomersTab(QWidget):
             cursor = users_collection.find().sort([(sort_attr, 1 if sort_ascend == True else -1)])
             self.signals.update_status_bar_widget_2.emit(f"Customers sorted by {combo_box_input}")
             self.display_customers(cursor)
+
+    def search_customers(self):
+        role = "Librarian"
+        label_1 = "First Name:"
+        label_2 = "Last Name:"
+        label_3 = "SSN:"
+        label_4 = "Address:"
+        dialog = SearchDialog(role, label_1, label_2, label_3, label_4)
+        result = dialog.exec()
+        if result == QDialog.DialogCode.Accepted:
+            first_name_text = dialog.input_1.text()
+            last_name_text = dialog.input_2.text()
+            ssn_text = dialog.input_3.text()
+            address_text = dialog.input_4.text()
+            users_collection = self.database_manager.db["users"]
+            first_name_formatted = ""
+            last_name_formatted = ""
+            ssn_formatted = ""
+            address_formatted = ""
+            query = {}
+            if len(first_name_text) >= 3:
+                query["first_name"] = {"$regex": first_name_text, "$options": "i"}
+                first_name_formatted =(f"  First Name: '{first_name_text}'")
+            if len(last_name_text) >= 3:
+                query["last_name"] = {"$regex": last_name_text, "$options": "i"}
+                last_name_formatted =(f"  Last Name: '{last_name_text}'")
+            if len(ssn_text) >= 3:
+                query["ssn"] = {"$regex": ssn_text, "$options": "i"}
+                ssn_formatted =(f"  SSN: '{ssn_text}'")
+            if len(address_text) >= 3:
+                query["address"] = {"$regex": address_text, "$options": "i"}
+                address_formatted =(f"  Address: '{address_text}'")
+            if len(first_name_text) >= 3 or len(last_name_text) >= 3 or len(ssn_text)>= 3 or len(address_text):
+                self.signals.update_status_bar_widget_2.emit(f"Showing customer searches for: {first_name_formatted}{last_name_formatted}{ssn_formatted}{address_formatted}")
+                self.refresh_button.setEnabled(False)   # Disabling the button to refresh search results
+                self.cancel_button.setEnabled(True)    # Disable the button to cancel the search if the search is not in progress
+                cursor = users_collection.find(query)
+                self.display_customers(cursor)
+            else:
+                self.statusBar.showMessage("The minimum character length required for searching is 3.", 8000)
+                return 
 
     def cancel_search_or_sort(self):
         self.refresh_button.setEnabled(True)
