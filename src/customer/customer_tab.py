@@ -1,16 +1,13 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QDialog,
-      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QHeaderView )
-from PyQt6.QtGui import QPixmap
-from PyQt6.QtCore import Qt
-from pathlib import Path
+      QHBoxLayout, QTableWidget, QHeaderView )
 from datetime import datetime, timedelta
 from PyQt6.QtCore import QTimer
 import bcrypt  
-import os
 from database_manager import DatabaseManager
 from global_state import GlobalState
 from shared_functions import display_book_catalog
+from shared_functions import display_borrowed_books
 from shared_functions import display_book_history
 from shared_functions import advanced_search
 from shared_functions import sort_book_catalog
@@ -231,42 +228,7 @@ class CustomerTab(QWidget):
         return borrowed_books_count >= 6
 
     def display_borrowed_books(self):
-        borrowed_books_collection = self.database_manager.db["borrowed_books"]
-        user_borrowed_books = borrowed_books_collection.find({"user_id": GlobalState.current_user})
-        self.borrowed_books_table.setRowCount(0)
-        for index, borrowed_book in enumerate(user_borrowed_books):
-            # Get book information from the 'books' collection based on book_id
-            books_collection = self.database_manager.db["books"]
-            book_id = borrowed_book["book_id"]
-            book_query = {"_id": book_id}
-            book = books_collection.find_one(book_query)
-            # Insert a new row into the table
-            self.borrowed_books_table.insertRow(index)
-            # Display book information in the table
-            for col, prop in enumerate(["title", "author", "pages", "year"]):
-                self.borrowed_books_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
-            # Display book cover image
-            cover_label = QLabel()
-            cover_path = os.path.join(Path(__file__).resolve().parent.parent.parent, "book_covers", f"{book['image_name']}")
-            if os.path.exists(cover_path):
-                pixmap = QPixmap(cover_path)
-                scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
-                cover_label.setPixmap(scaled_pixmap)
-                self.borrowed_books_table.setRowHeight(index, scaled_pixmap.height())
-                cover_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-                self.borrowed_books_table.setCellWidget(index, 4, cover_label)
-            else:
-                placeholder_label = QLabel("No Image")
-                self.borrowed_books_table.setCellWidget(index, 4, placeholder_label)
-            # Display the borrowed date in the sixth column
-            borrowed_date = borrowed_book["borrow_date"]
-            formatted_borrowed_date = datetime.strftime(borrowed_date, "%d/%m/%Y, %H:%M")
-            self.borrowed_books_table.setItem(index, 5, QTableWidgetItem(formatted_borrowed_date))
-            # Display the expiration date in the seventh column
-            expiry_date = borrowed_book["expiry_date"]
-            formatted_expiry_date = datetime.strftime(expiry_date, "%d/%m/%Y, %H:%M")
-            self.borrowed_books_table.setItem(index, 6, QTableWidgetItem(formatted_expiry_date))
-        self.borrowed_books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+        display_borrowed_books(self, GlobalState.current_user, self.borrowed_books_table)
 
     def add_to_user_history(self, user_id, book_id, borrow_date):
         # Add the book information into the user's history

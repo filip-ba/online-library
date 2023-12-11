@@ -1,13 +1,15 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QListWidget, QListWidgetItem, QScrollArea,  
-      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView )
+      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView  )
 from PyQt6.QtCore import Qt
 from database_manager import DatabaseManager
 from dialogs.registration_dialog import RegistrationDialog
 from dialogs.edit_profile_dialog import EditProfileDialog
 from dialogs.sort_dialog import SortDialog
 from dialogs.search_dialog import SearchDialog
+from dialogs.borrowed_books_dialog import BorrowedBooksDialog
 from shared_functions import create_account
+from shared_functions import display_borrowed_books
 
 
 class ManageCustomersTab(QWidget):
@@ -35,6 +37,7 @@ class ManageCustomersTab(QWidget):
         self.sort_button.clicked.connect(self.sort_customers)
         self.search_button.clicked.connect(self.search_customers)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
+        self.show_borrowed_button.clicked.connect(self.display_borrowed_books)
 
     def init_librarian_tab(self):
         self.display_customers()
@@ -83,11 +86,9 @@ class ManageCustomersTab(QWidget):
         self.show_borrowed_button = QPushButton("Show Borrowed Books")
         self.show_history_button = QPushButton("Show Customer History")
         self.assign_book_button = QPushButton("Assign a Book")
-        self.remove_book_button = QPushButton("Remove Book")
         books_actions_layout.addWidget(self.show_borrowed_button)
         books_actions_layout.addWidget(self.show_history_button)
         books_actions_layout.addWidget(self.assign_book_button)
-        books_actions_layout.addWidget(self.remove_book_button)
         # GroupBox for Add Account, Edit Account, Ban Account, Unban Account
         group_box_4 = QGroupBox("Account Actions")
         account_actions_layout = QVBoxLayout(group_box_4)
@@ -189,6 +190,33 @@ class ManageCustomersTab(QWidget):
                 self.customers_table.setItem(index, col, item)
             self.customers_table.setRowHeight(index, 50)
         self.customers_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
+
+    def display_borrowed_books(self):
+        selected_row = self.customers_table.currentRow()
+        number_of_selected_rows = len(self.customers_table.selectionModel().selectedRows())
+        if number_of_selected_rows != 1:
+            return
+        account_username = self.customers_table.item(selected_row, 0).text()
+        user_collection = self.database_manager.db["users"]
+        query = {"username": account_username}
+        user_data = user_collection.find_one(query)
+        if user_data:
+            user_id = user_data["_id"]
+            borrowed_books_table = QTableWidget()
+            display_borrowed_books(self, user_id, borrowed_books_table)
+            dialog = BorrowedBooksDialog(user_id, borrowed_books_table)  
+            result = dialog.exec()
+            if result == QDialog.DialogCode.Accepted:
+                #self.remove_selected_book(user_id)
+                self.statusBar.showMessage(f"The book has been removed", 8000)
+        else:
+            QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
+
+    def remove_book(self, user_id, book_id):
+        borrowed_books_collection = self.database_manager.db["borrowed_books"]
+        delete_query = {"user_id": user_id, "book_id": book_id}
+        borrowed_books_collection.delete_one(delete_query)
+
 
     def display_banned_accounts(self):
         banned_accounts_collection = self.database_manager.db["banned_accounts"]
