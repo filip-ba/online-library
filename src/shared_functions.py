@@ -128,11 +128,11 @@ def display_borrowed_books(self, user_id, borrowed_books_table):
         borrowed_books_table.setItem(index, 6, QTableWidgetItem(formatted_expiry_date))
     borrowed_books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
-def display_book_history(self, history_table):
+def display_book_history(self, user_id, history_table):
     # Display the user's book history in the history_table
     history_collection = self.database_manager.db["customer_history"]
     books_collection = self.database_manager.db["books"]
-    user_history = history_collection.find({"user_id": GlobalState.current_user})
+    user_history = history_collection.find({"user_id": user_id})
     history_table.setRowCount(0)
     for history_entry in user_history:
         book_id = history_entry.get("book_id", "")

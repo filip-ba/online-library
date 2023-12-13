@@ -9,6 +9,7 @@ from dialogs.sort_dialog import SortDialog
 from dialogs.search_dialog import SearchDialog
 from shared_functions import create_account
 from shared_functions import display_borrowed_books
+from shared_functions import display_book_history
 
 
 class ManageCustomersTab(QWidget):
@@ -22,6 +23,8 @@ class ManageCustomersTab(QWidget):
         self.signals.librarian_logged_in.connect(self.init_librarian_tab)
         # Connects
         self.refresh_button.clicked.connect(lambda: self.display_customers())
+        self.show_borrowed_button.clicked.connect(self.display_borrowed_books)
+        self.show_history_button.clicked.connect(self.display_customer_history)
         self.refresh_button.clicked.connect(self.display_banned_accounts)
         self.refresh_button.clicked.connect(self.display_inactivated_accounts)
         self.refresh_button.clicked.connect(self.display_edited_accounts)
@@ -36,7 +39,6 @@ class ManageCustomersTab(QWidget):
         self.sort_button.clicked.connect(self.sort_customers)
         self.search_button.clicked.connect(self.search_customers)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
-        self.show_borrowed_button.clicked.connect(self.display_borrowed_books)
 
     def init_librarian_tab(self):
         self.display_customers()
@@ -264,10 +266,41 @@ class ManageCustomersTab(QWidget):
                 # Remove the book from the table
                 table_widget.removeRow(selected_row)
                 # Display a message
-                QMessageBox.information(self, "Book Returned", f"The book has been returned.")
                 self.statusBar.showMessage(f"The book '{title}' has been removed from the user '{account_username}'.", 8000)
         else:
             QMessageBox.warning(self, "Return Failed", f"Book not found in the database.")
+
+    def display_customer_history(self):
+        selected_row = self.customers_table.currentRow()
+        number_of_selected_rows = len(self.customers_table.selectionModel().selectedRows())
+        if number_of_selected_rows != 1:
+            return
+        account_username = self.customers_table.item(selected_row, 0).text()
+        user_collection = self.database_manager.db["users"]
+        query = {"username": account_username}
+        user_data = user_collection.find_one(query)
+        # If the user exists, open the dialog
+        if user_data:
+            user_id = user_data["_id"]
+            self.customer_history_dialog(user_id, account_username)
+        else:
+            QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
+
+    def customer_history_dialog(self, user_id, account_username):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{account_username}'s history of borrowed books")
+        dialog.setFixedSize(800, 700)
+        layout = QVBoxLayout(dialog)
+        table_widget = QTableWidget(dialog)
+        table_widget.setColumnCount(6)
+        table_widget.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Borrow Date"])
+        table_widget.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        horizontal_header = table_widget.horizontalHeader()
+        horizontal_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # Populate the table with the user's borrowed books
+        display_book_history(self, user_id, table_widget)
+        layout.addWidget(table_widget)
+        dialog.exec()
 
     def display_banned_accounts(self):
         banned_accounts_collection = self.database_manager.db["banned_accounts"]

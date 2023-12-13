@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QDialog,
-      QHBoxLayout, QTableWidget, QHeaderView, QAbstractItemView )
+      QHBoxLayout, QTableWidget, QHeaderView, QAbstractItemView, QTableWidgetItem )
 from datetime import datetime, timedelta
 import bcrypt  
 from database_manager import DatabaseManager
@@ -30,6 +30,7 @@ class CustomerTab(QWidget):
         self.borrow_button.clicked.connect(self.borrow_book)
         self.return_button.clicked.connect(self.return_book)
         self.edit_profile_button.clicked.connect(self.edit_details)
+        self.clear_history_button.clicked.connect(self.clear_history)
 
     def init_customer_tab(self):
         self.display_books()
@@ -95,9 +96,11 @@ class CustomerTab(QWidget):
         self.borrow_button = QPushButton("Borrow")
         self.return_button = QPushButton("Return")
         self.edit_profile_button = QPushButton("Edit Profile")
+        self.clear_history_button = QPushButton("Clear History")
         bottom_layout.addWidget(self.borrow_button)
         bottom_layout.addWidget(self.return_button)
         bottom_layout.addWidget(self.edit_profile_button)
+        bottom_layout.addWidget(self.clear_history_button)
         # Add layouts to the main layout
         top_layout.setContentsMargins(15, 15, 15, 7)
         tab_layout.setContentsMargins(15, 8, 15, 8)
@@ -158,11 +161,11 @@ class CustomerTab(QWidget):
                     QMessageBox.StandardButton.Cancel
                 )
                 if reply == QMessageBox.StandardButton.Yes:
-                    self.borrow_selected_book(user_id, book_id, title, author, books_collection)
+                    self.borrow_selected_book(user_id, book_id, title, author, books_collection, selected_row)
         else:
             return
 
-    def borrow_selected_book(self, user_id, book_id, title, author, books_collection):
+    def borrow_selected_book(self, user_id, book_id, title, author, books_collection, selected_row):
             # Insert a document into the 'borrowed_books' collection
             borrowed_books_collection = self.database_manager.db["borrowed_books"]
             borrow_date = datetime.utcnow()
@@ -177,6 +180,10 @@ class CustomerTab(QWidget):
             # Update the 'items' field in the 'books' collection (decrement by 1)
             update_query = {"$inc": {"items": -1}}
             books_collection.update_one({"_id": book_id}, update_query)
+            # Update the 'items' column in the catalog_table for the selected row
+            updated_items = self.catalog_table.item(selected_row, 4).text()
+            updated_items = str(int(updated_items) - 1)  # Decrement by 1
+            self.catalog_table.setItem(selected_row, 4, QTableWidgetItem(updated_items))
             self.statusBar.showMessage(f"You have borrowed '{title}' by {author}.", 8000)
             # Add the book to the user's history
             self.add_to_user_history(user_id, book_id, borrow_date)
@@ -218,7 +225,7 @@ class CustomerTab(QWidget):
         self.display_history()
 
     def display_history(self):
-        display_book_history(self, self.history_table)
+        display_book_history(self, GlobalState.current_user, self.history_table)
 
     def return_book(self):
         selected_row = self.tab_widget.widget(1).layout().itemAt(0).widget().currentRow()
@@ -251,18 +258,55 @@ class CustomerTab(QWidget):
                 QMessageBox.StandardButton.Cancel
             )
             if reply == QMessageBox.StandardButton.Yes:
-                self.return_selected_book(user_id, book_id, title, author)
+                self.return_selected_book(user_id, book_id, title, author, selected_row)
         else:
             return
 
-    def return_selected_book(self, user_id, book_id, title, author):
+    def return_selected_book(self, user_id, book_id, title, author, selected_row):
         # Increasing the number of copies in the 'books' database is done via MongoDB Triggers.
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         return_query = {"user_id": user_id, "book_id": book_id}
         borrowed_books_collection.delete_one(return_query)
+        # Increment the number of items in the books collection
+        position = self.find_book_position(title)
+        if position != -1:
+            updated_items = self.catalog_table.item(position, 4).text()
+            updated_items = str(int(updated_items) + 1)  # Increment by 1
+            self.catalog_table.setItem(position, 4, QTableWidgetItem(updated_items))
         self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 8000)
-        self.display_borrowed_books()
+        self.borrowed_books_table.removeRow(selected_row)
         # Not refreshing the book catalog because of possible applied filters
+
+    def find_book_position(self, title):
+        for row in range(self.catalog_table.rowCount()):
+            item = self.catalog_table.item(row, 0)
+            if item and item.text() == str(title):
+                return row  # Return the row index where the book is found
+        return -1  # Return -1 if the book is not found in the table
+
+    def clear_history(self):
+        user_id = GlobalState.current_user
+        users_collection = self.database_manager.db["users"]
+        user_query = {"_id": user_id}
+        user_document = users_collection.find_one(user_query)
+        if not user_document:
+            QMessageBox.warning(self, "History Clearing Failed", f"User not found in the database.")
+            return
+        # Ask for confirmation
+        confirm_message = "Are you sure you want to clear your borrowing history?"
+        confirm_result = QMessageBox.question(
+            self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel
+            )
+        if confirm_result == QMessageBox.StandardButton.Yes:
+            # Clear the user's history in the 'customer_history' collection
+            customer_history_collection = self.database_manager.db["customer_history"]
+            delete_query = {"user_id": user_id}
+            deleted_count = customer_history_collection.delete_many(delete_query)
+            if deleted_count.deleted_count > 0:
+                self.display_history()
+                QMessageBox.information(self, "History Cleared", "Your borrowing history has been cleared.")
+            else:
+                QMessageBox.information(self, "No History Found", "No borrowing history found for clearing.")
 
     def search_books(self):
         advanced_search(self, self.signals, self.statusBar, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
