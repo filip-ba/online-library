@@ -1,13 +1,12 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QListWidget, QListWidgetItem, QScrollArea,  
-      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView  )
+      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView, QAbstractItemView )
 from PyQt6.QtCore import Qt
 from database_manager import DatabaseManager
 from dialogs.registration_dialog import RegistrationDialog
 from dialogs.edit_profile_dialog import EditProfileDialog
 from dialogs.sort_dialog import SortDialog
 from dialogs.search_dialog import SearchDialog
-from dialogs.borrowed_books_dialog import BorrowedBooksDialog
 from shared_functions import create_account
 from shared_functions import display_borrowed_books
 
@@ -107,6 +106,7 @@ class ManageCustomersTab(QWidget):
         customer_table_tab = QWidget()
         self.customers_table.setColumnCount(5) 
         self.customers_table.setHorizontalHeaderLabels(["Username", "First Name", "Last Name", "SSN", "Address"])
+        self.customers_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         header = self.customers_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         customer_table_layout = QVBoxLayout(customer_table_tab)
@@ -117,6 +117,7 @@ class ManageCustomersTab(QWidget):
         banned_accounts_tab = QWidget()
         self.banned_accounts_table.setColumnCount(5)
         self.banned_accounts_table.setHorizontalHeaderLabels(["Username", "First Name", "Last Name", "SSN", "Address"])
+        self.banned_accounts_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         header_2 = self.banned_accounts_table.horizontalHeader()
         header_2.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         banned_accounts_layout = QVBoxLayout(banned_accounts_tab)
@@ -200,23 +201,73 @@ class ManageCustomersTab(QWidget):
         user_collection = self.database_manager.db["users"]
         query = {"username": account_username}
         user_data = user_collection.find_one(query)
+        # If the user exists, open the dialog
         if user_data:
             user_id = user_data["_id"]
-            borrowed_books_table = QTableWidget()
-            display_borrowed_books(self, user_id, borrowed_books_table)
-            dialog = BorrowedBooksDialog(user_id, borrowed_books_table)  
-            result = dialog.exec()
-            if result == QDialog.DialogCode.Accepted:
-                #self.remove_selected_book(user_id)
-                self.statusBar.showMessage(f"The book has been removed", 8000)
+            self.borrowed_books_dialog(user_id, account_username)
         else:
             QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
 
-    def remove_book(self, user_id, book_id):
-        borrowed_books_collection = self.database_manager.db["borrowed_books"]
-        delete_query = {"user_id": user_id, "book_id": book_id}
-        borrowed_books_collection.delete_one(delete_query)
+    def borrowed_books_dialog(self, user_id, account_username):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"{account_username}'s borrowed books")
+        dialog.setFixedSize(800, 700)
+        layout = QVBoxLayout(dialog)
+        table_widget = QTableWidget(dialog)
+        table_widget.setColumnCount(7)
+        table_widget.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Borrow Date", "Due Date"])
+        table_widget.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        horizontal_header = table_widget.horizontalHeader()
+        horizontal_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # Populate the table with the user's borrowed books
+        display_borrowed_books(self, user_id, table_widget)
+        if table_widget.rowCount() >= 5:
+            vertical_header = table_widget.verticalHeader()
+            vertical_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # Buttons
+        button_layout = QHBoxLayout()
+        remove_button = QPushButton("Remove the Book", dialog)
+        remove_button.clicked.connect(lambda: self.return_selected_book(table_widget, user_id, account_username))
+        cancel_button = QPushButton("Cancel", dialog)
+        cancel_button.clicked.connect(dialog.reject)
+        button_layout.addWidget(remove_button)
+        button_layout.addWidget(cancel_button)
+        # Add widgets to the layout
+        layout.addWidget(table_widget)
+        layout.addLayout(button_layout)
+        dialog.exec()
 
+    def return_selected_book(self, table_widget, user_id, account_username):
+        selected_row = table_widget.currentRow()
+        number_of_selected_rows = len(table_widget.selectionModel().selectedRows())
+        if number_of_selected_rows != 1:
+            return
+        title = table_widget.item(selected_row, 0).text()
+        author = table_widget.item(selected_row, 1).text()
+        books_collection = self.database_manager.db["books"]
+        book_query = {"title": title, "author": author}
+        book_document = books_collection.find_one(book_query)
+        book_id = book_document["_id"]
+        if book_id:
+            reply = QMessageBox.question(
+                self,
+                "Return Book",
+                f"Do you want to return '{title}' by {author}?",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
+                QMessageBox.StandardButton.Cancel
+            )
+            if reply == QMessageBox.StandardButton.Yes:
+                borrowed_books_collection = self.database_manager.db["borrowed_books"]
+                delete_query = {"user_id": user_id, "book_id": book_id}
+                # Delete the book from the borrowed_books collection
+                borrowed_books_collection.delete_one(delete_query)
+                # Remove the book from the table
+                table_widget.removeRow(selected_row)
+                # Display a message
+                QMessageBox.information(self, "Book Returned", f"The book has been returned.")
+                self.statusBar.showMessage(f"The book '{title}' has been removed from the user '{account_username}'.", 8000)
+        else:
+            QMessageBox.warning(self, "Return Failed", f"Book not found in the database.")
 
     def display_banned_accounts(self):
         banned_accounts_collection = self.database_manager.db["banned_accounts"]

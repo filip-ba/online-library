@@ -1,8 +1,7 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QDialog,
-      QHBoxLayout, QTableWidget, QHeaderView )
+      QHBoxLayout, QTableWidget, QHeaderView, QAbstractItemView )
 from datetime import datetime, timedelta
-from PyQt6.QtCore import QTimer
 import bcrypt  
 from database_manager import DatabaseManager
 from global_state import GlobalState
@@ -39,32 +38,6 @@ class CustomerTab(QWidget):
         self.tab_widget.setCurrentIndex(0)
         self.cancel_button.setEnabled(False)
         self.refresh_catalog_button.setEnabled(True)
-        # QTimer for updating borrowed books every 60 seconds
-        self.borrowed_books_timer = QTimer(self)
-        self.borrowed_books_timer.timeout.connect(self.update_borrowed_books)
-        self.borrowed_books_timer.start(60000)
-        # QTimer for checking if the account hasn't been deleted/banned
-        self.account_state_timer = QTimer(self)
-        self.account_state_timer.timeout.connect(self.check_account_state)
-        self.account_state_timer.start(60000)
-
-    def update_borrowed_books(self):
-        self.display_borrowed_books()
-
-    def check_account_state(self):
-        user_id = GlobalState.current_user
-        users_collection = self.database_manager.db["users"]
-        banned_accounts_collection = self.database_manager.db["banned_accounts"]
-        # Check if the user is in the users collection
-        user_exists = users_collection.find_one({"_id": user_id})
-        if not user_exists:
-            # Check if the user is in the banned_accounts collection
-            banned_user_exists = banned_accounts_collection.find_one({"_id": user_id})
-            if banned_user_exists:
-                QMessageBox.warning(self, "Account Banned", "Your account has been banned.")
-            else:
-                QMessageBox.warning(self, "Account Deleted", "Your account has been deleted.")
-            self.signals.log_out.emit()
 
     def create_customer_ui(self):
         # Layout for the entire Customer tab
@@ -90,6 +63,7 @@ class CustomerTab(QWidget):
         self.catalog_table = QTableWidget()
         self.catalog_table.setColumnCount(6) 
         self.catalog_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Items", "Book Cover"])
+        self.catalog_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         catalog_layout.addWidget(self.catalog_table)
         header = self.catalog_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
@@ -98,6 +72,7 @@ class CustomerTab(QWidget):
         self.borrowed_books_table = QTableWidget()
         self.borrowed_books_table.setColumnCount(7)
         self.borrowed_books_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Borrow Date", "Due Date"])
+        self.borrowed_books_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         header = self.borrowed_books_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         borrowed_books_layout.addWidget(self.borrowed_books_table)
@@ -106,6 +81,7 @@ class CustomerTab(QWidget):
         self.history_table = QTableWidget()
         self.history_table.setColumnCount(6)  
         self.history_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Date Borrowed"])
+        self.history_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         header = self.history_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         history_layout.addWidget(self.history_table)
@@ -190,7 +166,7 @@ class CustomerTab(QWidget):
             # Insert a document into the 'borrowed_books' collection
             borrowed_books_collection = self.database_manager.db["borrowed_books"]
             borrow_date = datetime.utcnow()
-            expiry_date = borrow_date + timedelta(minutes=2) 
+            expiry_date = borrow_date + timedelta(minutes=15) 
             borrowed_book = {
                 "user_id": user_id,
                 "book_id": book_id,

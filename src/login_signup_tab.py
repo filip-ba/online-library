@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QTabWidget, 
     QFormLayout, QVBoxLayout, QTabWidget, QWidget, QMessageBox )
 from PyQt6.QtGui import QRegularExpressionValidator, QIntValidator
-from PyQt6.QtCore import Qt, QRegularExpression
+from PyQt6.QtCore import Qt, QRegularExpression, QTimer
 import bcrypt  
 from database_manager import DatabaseManager
 from global_state import GlobalState
@@ -16,10 +16,13 @@ class LoginSignupTab(QWidget):
         self.signals = signals
         self.statusBar = statusBar
         self.create_login_signup_ui()   
+        # QTimer
+        self.account_state_timer = QTimer(self)
 		# Connects
         self.signup_button.clicked.connect(self.register_user)
         self.login_button.clicked.connect(lambda: self.login(self.username_login.text(), self.password_login.text()))
         self.logout_button.clicked.connect(self.logout) 
+        self.account_state_timer.timeout.connect(self.check_account_state)
 
     def create_login_signup_ui(self):
         self.setObjectName("tab_login_signup")
@@ -121,19 +124,36 @@ class LoginSignupTab(QWidget):
         if GlobalState.current_role == "Customer":
             self.signals.customer_logged_in.emit()      # Initiates the logged in customer(Loads all the tables and personal info)
             self.signals.tab_state.emit(1, 2, 2)        # Disabled tab #1, enable tab #2, move to the tab #2
+            self.account_state_timer.start(60000)       # Start a timer that checks every 60s if the user wasn't banned/deleted
         elif GlobalState.current_role == "Librarian":     
             self.signals.librarian_logged_in.emit()
             self.signals.tab_state.emit(2, 1, 1)        # Disabled tab #2, enable tab #1, move to the tab #1
 
-    def logout(self):
+    def check_account_state(self):
+        user_id = GlobalState.current_user
+        users_collection = self.database_manager.db["users"]
+        banned_accounts_collection = self.database_manager.db["banned_accounts"]
+        # Check if the user is in the users collection
+        user_exists = users_collection.find_one({"_id": user_id})
+        if not user_exists:
+            # Check if the user is in the banned_accounts collection
+            banned_user_exists = banned_accounts_collection.find_one({"_id": user_id})
+            if banned_user_exists:
+                QMessageBox.warning(self, "Account Banned", "Your account has been banned.")
+            else:
+                QMessageBox.warning(self, "Account Deleted", "Your account has been deleted.")
+            self.logout()
+
+    def logout(self):	
+        self.account_state_timer.stop()                 # Stop the timer
         GlobalState.current_user = None
         GlobalState.current_role = None
         self.signals.update_status.emit("Not logged in")
         self.signals.update_status_bar_widget.emit("")  # Clear the status bar's widgets after logging out
         self.signals.update_status_bar_widget_2.emit("")  
         self.statusBar.clearMessage()
-        self.signals.tab_state.emit(1, 0, 0)        # Disabled tab #1
-        self.signals.tab_state.emit(2, 0, 0)        # Disabled tab #2
+        self.signals.tab_state.emit(1, 0, 0)            # Disabled tab #1
+        self.signals.tab_state.emit(2, 0, 0)            # Disabled tab #2
 
     def register_user(self):
         account_registered = create_account(self, self.username_signup.text(), self.password_signup.text(), self.first_name_signup.text(), self.last_name_signup.text(), self.ssn_signup.text(), self.address_signup.text(), "Customer", self.statusBar)
