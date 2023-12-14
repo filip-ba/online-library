@@ -45,7 +45,7 @@ class SortDialog(QDialog):
         radio_and_title_layout.addLayout(radio_layout)
         radio_and_title_layout.addSpacing(10)
         layout.addLayout(radio_and_title_layout)
-        # Buttons
+        # Ok and Cancel buttons
         button_layout = QHBoxLayout()
         self.ok_button = QPushButton("Ok")
         self.cancel_button = QPushButton("Cancel")

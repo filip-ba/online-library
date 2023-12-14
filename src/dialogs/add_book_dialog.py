@@ -13,7 +13,7 @@ class AddBookDialog(QDialog):
         # Connects
         self.ok_button.clicked.connect(self.accept)
         self.cancel_button.clicked.connect(self.reject)
-        # Variables for importing the image
+        # Variables for image import
         self.image_name = ""
         self.path_name = ""
 

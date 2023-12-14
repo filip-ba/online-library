@@ -95,7 +95,7 @@ def display_borrowed_books(self, user_id, borrowed_books_table):
     user_borrowed_books = borrowed_books_collection.find({"user_id": user_id})
     borrowed_books_table.setRowCount(0)
     for index, borrowed_book in enumerate(user_borrowed_books):
-        # Get book information from the 'books' collection based on book_id
+        # Get book information from the "books" collection based on book_id
         books_collection = self.database_manager.db["books"]
         book_id = borrowed_book["book_id"]
         book_query = {"_id": book_id}
@@ -105,7 +105,6 @@ def display_borrowed_books(self, user_id, borrowed_books_table):
         # Display book information in the table
         for col, prop in enumerate(["title", "author", "pages", "year"]):
             borrowed_books_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
-        # Display book cover image
         cover_label = QLabel()
         cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}")
         if os.path.exists(cover_path):
@@ -129,7 +128,6 @@ def display_borrowed_books(self, user_id, borrowed_books_table):
     borrowed_books_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
 def display_book_history(self, user_id, history_table):
-    # Display the user's book history in the history_table
     history_collection = self.database_manager.db["customer_history"]
     books_collection = self.database_manager.db["books"]
     user_history = history_collection.find({"user_id": user_id})
@@ -146,7 +144,6 @@ def display_book_history(self, user_id, history_table):
         # Display book information in the corresponding columns
         for col, prop in enumerate(["title", "author", "pages", "year"]):
             history_table.setItem(index, col, QTableWidgetItem(str(book.get(prop, ""))))
-        # Display book cover image
         cover_label = QLabel()
         cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}")
         if os.path.exists(cover_path):
@@ -164,7 +161,7 @@ def display_book_history(self, user_id, history_table):
         history_table.setItem(index, 5, QTableWidgetItem(formatted_event_date))
     history_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
 
-def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_button, cancel_button):
+def search_book_catalog(self, signals, statusBar, catalog_table, refresh_catalog_button, cancel_button):
     role = "Customer"
     label_1 = "Author:"
     label_2 = "Title:"
@@ -192,7 +189,7 @@ def advanced_search(self, signals, statusBar, catalog_table, refresh_catalog_but
             year_formatted =(f"  Year: '{year_text}'")
         if len(author_text) >= 3 or len(title_text) >= 3 or len(year_text) >= 3:
             signals.update_status_bar_widget.emit(f"Showing book searches for: {author_formatted}{title_formatted}{year_formatted}")
-            refresh_catalog_button.setEnabled(False)   # Disabling the button to refresh search results
+            refresh_catalog_button.setEnabled(False)   # Disable the button to refresh search results
             cancel_button.setEnabled(True)    # Disable the button to cancel the search if the search is not in progress
             cursor = books_collection.find(query)
             display_book_catalog(self, catalog_table, cursor)
@@ -280,9 +277,9 @@ def borrow_book(self, catalog_table, user_id, database_manager, statusBar, role)
         return
 
 def borrow_selected_book(user_id, book_id, selected_row, books_collection, borrowed_books_collection, history_collection, catalog_table, statusBar, message_6):
-        # Insert a document into the 'borrowed_books' collection
+        # Insert a document into the "borrowed_books" collection
         borrow_date = datetime.utcnow()
-        expiry_date = borrow_date + timedelta(minutes=15) 
+        expiry_date = borrow_date + timedelta(minutes=1) 
         borrowed_book = {
             "user_id": user_id,
             "book_id": book_id,
@@ -290,12 +287,12 @@ def borrow_selected_book(user_id, book_id, selected_row, books_collection, borro
             "expiry_date": expiry_date
         }
         borrowed_books_collection.insert_one(borrowed_book)
-        # Update the 'items' field in the 'books' collection (decrement by 1)
+        # Update the "items" field in the "books" collection (decrement by 1)
         update_query = {"$inc": {"items": -1}}
         books_collection.update_one({"_id": book_id}, update_query)
-        # Update the 'items' column in the catalog_table for the selected row
+        # Update the "items" column in the catalog_table for the selected row
         updated_items = catalog_table.item(selected_row, 4).text()
-        updated_items = str(int(updated_items) - 1)  # Decrement by 1
+        updated_items = str(int(updated_items) - 1) 
         catalog_table.setItem(selected_row, 4, QTableWidgetItem(updated_items))
         statusBar.showMessage(message_6, 8000)
         # Add the book to the user's history

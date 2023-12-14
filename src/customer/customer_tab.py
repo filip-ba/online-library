@@ -7,7 +7,7 @@ from global_state import GlobalState
 from shared_functions import display_book_catalog
 from shared_functions import display_borrowed_books
 from shared_functions import display_book_history
-from shared_functions import advanced_search
+from shared_functions import search_book_catalog
 from shared_functions import sort_book_catalog
 from shared_functions import borrow_book
 from dialogs.edit_profile_dialog import EditProfileDialog
@@ -33,10 +33,13 @@ class CustomerTab(QWidget):
         self.delete_history_button.clicked.connect(self.delete_history)
 
     def init_customer_tab(self):
-        self.display_books()
+        # Load the tables
+        self.display_books()    
         self.display_borrowed_books()
         self.display_history()
+        # Set the current tab of the tab widget to "book catalog"
         self.tab_widget.setCurrentIndex(0)
+        # Set the default value at the beginning, because the state(enabled/disabled) of these 2 buttons can change
         self.cancel_button.setEnabled(False)
         self.refresh_catalog_button.setEnabled(True)
 
@@ -115,6 +118,7 @@ class CustomerTab(QWidget):
 
     def borrow_selected_book(self):
         result = borrow_book(self, self.catalog_table, GlobalState.current_user, self.database_manager, self.statusBar, "Customer")
+        # Refresh the tables of borrowed books and history if the book has been successfully borrowed
         if result == True:
             self.display_borrowed_books()
             self.display_history()
@@ -141,13 +145,10 @@ class CustomerTab(QWidget):
             books_collection = self.database_manager.db["books"]
             book_query = {"title": title, "author": author}
             book_document = books_collection.find_one(book_query)
- 
             if not user_document:
                 QMessageBox.warning(self, "Return Failed", f"User not found in the database.")
                 return
-            # Get the book id
             book_id = book_document["_id"]
-            # Confirm returning with the user
             reply = QMessageBox.question(
                 self, "Return Book", f"Do you want to return '{title}' by {author}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel )
             if reply == QMessageBox.StandardButton.Yes:
@@ -156,7 +157,7 @@ class CustomerTab(QWidget):
             return
 
     def return_selected_book(self, user_id, book_id, title, author, selected_row):
-        # Increasing the number of copies in the 'books' database is done via MongoDB Triggers.
+        # Increase of the number of copies in the "books" collection is done via MongoDB Triggers
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         return_query = {"user_id": user_id, "book_id": book_id}
         borrowed_books_collection.delete_one(return_query)
@@ -164,11 +165,10 @@ class CustomerTab(QWidget):
         position = self.find_book_position(title)
         if position != -1:
             updated_items = self.catalog_table.item(position, 4).text()
-            updated_items = str(int(updated_items) + 1)  # Increment by 1
+            updated_items = str(int(updated_items) + 1)  
             self.catalog_table.setItem(position, 4, QTableWidgetItem(updated_items))
         self.statusBar.showMessage(f"You have returned '{title}' by {author}.", 8000)
         self.borrowed_books_table.removeRow(selected_row)
-        # Not refreshing the book catalog because of possible applied filters
 
     def find_book_position(self, title):
         for row in range(self.catalog_table.rowCount()):
@@ -185,7 +185,6 @@ class CustomerTab(QWidget):
         if not user_document:
             QMessageBox.warning(self, "History Deletion Failed", f"User not found in the database.")
             return
-        # Ask for confirmation
         confirm_result = QMessageBox.question(
             self, "Confirmation", "Are you sure you want to delete the borrowing history?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel )
         if confirm_result == QMessageBox.StandardButton.Yes:
@@ -198,16 +197,16 @@ class CustomerTab(QWidget):
                 QMessageBox.information(self, "No History Found", "No borrowing history found for clearing.")
 
     def search_books(self):
-        advanced_search(self, self.signals, self.statusBar, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
+        search_book_catalog(self, self.signals, self.statusBar, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
 
     def sort_books(self):
         sort_book_catalog(self, self.signals, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
       
     def cancel_search_or_sort(self):
-        self.refresh_catalog_button.setEnabled(True)
-        self.cancel_button.setEnabled(False) 
-        self.signals.update_status_bar_widget.emit("")
-        self.display_books()
+        self.refresh_catalog_button.setEnabled(True)    
+        self.cancel_button.setEnabled(False)    
+        self.signals.update_status_bar_widget.emit("")  # Clear the status bar widget
+        self.display_books()    # Load the entire "books" collection 
 
     def edit_details(self):
         user_collection = self.database_manager.db["users"]
@@ -242,7 +241,7 @@ class CustomerTab(QWidget):
                 ):
                     QMessageBox.information(self, "No Changes", "No information has been changed.")
                     return
-                # If the password field was empty
+                # Don't change the password if the password field was empty
                 password = (
                     user_data["password"] if password_text == "" else
                     str(bcrypt.hashpw(password_text.encode('utf-8'), bcrypt.gensalt()), 'utf-8')
@@ -275,6 +274,7 @@ class CustomerTab(QWidget):
                 elif existing_ssn or existing_inactivated_ssn or existing_banned_ssn:
                     QMessageBox.information(self, "Registration Failed", "Birth number already exists.")
                 else:
+                    # Insert the edited data into the edited_accounts collection
                     edited_data = {
                         "_id" : GlobalState.current_user,
                         "username": username_text,

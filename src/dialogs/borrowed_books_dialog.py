@@ -22,7 +22,7 @@ class BorrowedBooksDialog(QDialog):
         self.borrowed_books_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Book Cover", "Borrow Date", "Due Date"])
         header = self.borrowed_books_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
-        # Button
+        # Buttons
         button_layout = QHBoxLayout()
         self.remove_book_button  = QPushButton("Remove a Book")
         self.cancel_button = QPushButton("Cancel")

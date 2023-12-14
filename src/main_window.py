@@ -52,7 +52,7 @@ class MainWindow(QMainWindow):
         edit_menu = menu_bar.addMenu("Edit")
         view_menu = menu_bar.addMenu("View")
         user_menu = menu_bar.addMenu("User Menu")
-        # MeenuBar actions
+        # MenuBar actions
         self.quit_action = QAction("Quit", self)
         file_menu.addAction(self.quit_action)  
         self.quit_action.triggered.connect(self.close)

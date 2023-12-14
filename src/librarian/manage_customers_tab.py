@@ -25,8 +25,6 @@ class ManageCustomersTab(QWidget):
         self.signals.librarian_logged_in.connect(self.init_librarian_tab)
         # Connects
         self.refresh_button.clicked.connect(lambda: self.display_customers())
-        self.show_borrowed_button.clicked.connect(self.display_borrowed_books)
-        self.show_history_button.clicked.connect(self.display_customer_history)
         self.refresh_button.clicked.connect(self.display_banned_accounts)
         self.refresh_button.clicked.connect(self.display_inactivated_accounts)
         self.refresh_button.clicked.connect(self.display_edited_accounts)
@@ -41,19 +39,27 @@ class ManageCustomersTab(QWidget):
         self.sort_button.clicked.connect(self.sort_customers)
         self.search_button.clicked.connect(self.search_customers)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
+        self.show_borrowed_button.clicked.connect(self.display_borrowed_books)
+        self.show_history_button.clicked.connect(self.display_customer_history)
         self.assign_book_button.clicked.connect(self.assign_book)
+        self.remove_book_button.clicked.connect(self.remove_book)
 
     def init_librarian_tab(self):
+        # Load the tables and lists
         self.display_customers()
         self.display_banned_accounts()
         self.display_inactivated_accounts()
         self.display_edited_accounts()
+        # Display a message indicating how many accounts are waiting to be activated.
         self.pending_accounts_message()
+        # Set the current tab of the tab widget to "List of Customers"
         self.tab_widget.setCurrentIndex(0)
+        # Set the default value at the beginning, because the state(enabled/disabled) of these 2 buttons can change
         self.cancel_button.setEnabled(False)
         self.refresh_button.setEnabled(True)
 
     def pending_accounts_message(self):
+        # Count how many accounts are waiting to be activated and display a message in the status bar
         inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
         pending_accounts_count = inactivated_accounts_collection.count_documents({})
         if pending_accounts_count > 0:
@@ -65,7 +71,7 @@ class ManageCustomersTab(QWidget):
         left_layout = QVBoxLayout()
         right_layout = QVBoxLayout()
         main_layout = QHBoxLayout()
-        # Search and Sort Layout
+        # GroupBox 1 layout
         group_box_1 = QGroupBox("Search/Sort Actions")
         search_sort_layout = QVBoxLayout(group_box_1)
         self.search_button = QPushButton("Open Search")
@@ -76,7 +82,7 @@ class ManageCustomersTab(QWidget):
         search_sort_layout.addWidget(self.sort_button)
         search_sort_layout.addWidget(self.cancel_button)
         search_sort_layout.addWidget(self.refresh_button)
-        # Import/Export Layout
+        # GroupBox 2 layout
         group_box_2 = QGroupBox("Import/Export All Collections")
         group_box_2.setMaximumHeight(100)
         import_export_layout = QHBoxLayout(group_box_2)
@@ -84,16 +90,18 @@ class ManageCustomersTab(QWidget):
         self.export_button = QPushButton("Export")
         import_export_layout.addWidget(self.import_button)
         import_export_layout.addWidget(self.export_button)
-        # GroupBox for Borrowed Books, Show History, Assign Book, Remove Book
+        # GroupBox 3 layout
         group_box_3 = QGroupBox("Books Actions")
         books_actions_layout = QVBoxLayout(group_box_3)
         self.show_borrowed_button = QPushButton("Show Borrowed Books")
-        self.show_history_button = QPushButton("Show Borrowed Books History")
+        self.show_history_button = QPushButton("Show Borrowing History")
         self.assign_book_button = QPushButton("Assign a Book")
+        self.remove_book_button = QPushButton("Remove a Book")
         books_actions_layout.addWidget(self.show_borrowed_button)
         books_actions_layout.addWidget(self.show_history_button)
         books_actions_layout.addWidget(self.assign_book_button)
-        # GroupBox for Add Account, Edit Account, Ban Account, Unban Account
+        books_actions_layout.addWidget(self.remove_book_button)
+        # GroupBox 4 layout
         group_box_4 = QGroupBox("Account Actions")
         account_actions_layout = QVBoxLayout(group_box_4)
         self.add_account_button = QPushButton("Add Account")
@@ -116,7 +124,7 @@ class ManageCustomersTab(QWidget):
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         customer_table_layout = QVBoxLayout(customer_table_tab)
         customer_table_layout.addWidget(self.customers_table)
-        self.tab_widget.addTab(customer_table_tab, "Customer Table")
+        self.tab_widget.addTab(customer_table_tab, "List of Customers")
         # QTableWidget for Banned Accounts
         self.banned_accounts_table = QTableWidget()
         banned_accounts_tab = QWidget()
@@ -209,11 +217,27 @@ class ManageCustomersTab(QWidget):
         # If the user exists, open the dialog
         if user_data:
             user_id = user_data["_id"]
-            self.borrowed_books_dialog(user_id, account_username)
+            self.borrowed_books_dialog(user_id, account_username, "display")
         else:
             QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
 
-    def borrowed_books_dialog(self, user_id, account_username):
+    def remove_book(self):
+        selected_row = self.customers_table.currentRow()
+        number_of_selected_rows = len(self.customers_table.selectionModel().selectedRows())
+        if number_of_selected_rows != 1:
+            return
+        account_username = self.customers_table.item(selected_row, 0).text()
+        user_collection = self.database_manager.db["users"]
+        query = {"username": account_username}
+        user_data = user_collection.find_one(query)
+        # If the user exists, open the dialog
+        if user_data:
+            user_id = user_data["_id"]
+            self.borrowed_books_dialog(user_id, account_username, "remove")
+        else:
+            QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
+
+    def borrowed_books_dialog(self, user_id, account_username, action):
         dialog = QDialog(self)
         dialog.setWindowTitle(f"{account_username}'s Borrowed Books")
         dialog.setFixedSize(800, 700)
@@ -231,11 +255,12 @@ class ManageCustomersTab(QWidget):
             vertical_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         # Buttons
         button_layout = QHBoxLayout()
-        remove_button = QPushButton("Remove the Book", dialog)
-        remove_button.clicked.connect(lambda: self.return_selected_book(table_widget, user_id, account_username))
+        if action == "remove":
+            remove_button = QPushButton("Remove a Book", dialog)
+            remove_button.clicked.connect(lambda: self.return_selected_book(table_widget, user_id, account_username))
+            button_layout.addWidget(remove_button)
         cancel_button = QPushButton("Cancel", dialog)
         cancel_button.clicked.connect(dialog.reject)
-        button_layout.addWidget(remove_button)
         button_layout.addWidget(cancel_button)
         # Add widgets to the layout
         layout.addWidget(table_widget)
@@ -342,7 +367,12 @@ class ManageCustomersTab(QWidget):
         horizontal_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         # Populate the table with the user's borrowed books
         display_book_history(self, user_id, table_widget)
+        # Cancel button
+        cancel_button = QPushButton("Cancel", dialog)
+        cancel_button.clicked.connect(dialog.reject)
+        # Add widgets to the layout
         layout.addWidget(table_widget)
+        layout.addWidget(cancel_button)
         dialog.exec()
 
     def display_banned_accounts(self):

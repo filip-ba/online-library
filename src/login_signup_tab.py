@@ -16,12 +16,12 @@ class LoginSignupTab(QWidget):
         self.signals = signals
         self.statusBar = statusBar
         self.create_login_signup_ui()   
-        # QTimer
-        self.account_state_timer = QTimer(self)
 		# Connects
         self.signup_button.clicked.connect(self.register_user)
         self.login_button.clicked.connect(lambda: self.login(self.username_login.text(), self.password_login.text()))
         self.logout_button.clicked.connect(self.logout) 
+        # QTimer
+        self.account_state_timer = QTimer(self)
         self.account_state_timer.timeout.connect(self.check_account_state)
 
     def create_login_signup_ui(self):
@@ -41,11 +41,11 @@ class LoginSignupTab(QWidget):
         self.password_login = QLineEdit()
         self.password_login.setEchoMode(QLineEdit.EchoMode.Password)
         self.login_button = QPushButton("Login")
-        self.logout_button = QPushButton("Logout")  # Added logout button
+        self.logout_button = QPushButton("Logout")  
         login_layout.addRow("Username:", self.username_login)
         login_layout.addRow("Password:", self.password_login)
         login_layout.addRow("", self.login_button)
-        login_layout.addRow("", self.logout_button)  # Added logout button
+        login_layout.addRow("", self.logout_button)  
         # Layout for signup_tab
         signup_layout = QFormLayout(signup_tab)
         signup_title_label = QLabel("Sign Up", self)
@@ -88,10 +88,11 @@ class LoginSignupTab(QWidget):
 
     def login(self, username, password):
         current_role = ""
+        # Check if anyone is already logged in 
         if GlobalState.current_user:
             QMessageBox.information(self, "Warning", "Another user is already logged in. Please sign out first.")
             return
-        # Check the "librarians" collection
+        # Check what role is the user logged in as(Customer/Librarian) based on the collection
         librarian_collection = self.database_manager.db["librarians"]
         librarian_data = librarian_collection.find_one({"username": username})
         if librarian_data:
@@ -113,21 +114,21 @@ class LoginSignupTab(QWidget):
             GlobalState.current_user = current_user
             GlobalState.current_role = current_role
             self.signals.update_status.emit(f"Logged in as {username} with role {GlobalState.current_role}")
-            self.username_login.setText("")
-            self.password_login.setText("")
-            self.update_tab_access()
+            self.username_login.setText("") # Clear the username login form
+            self.password_login.setText("") # Clear the password login form
+            self.update_tab_access()    # Call a function that updates "permisisons"
         else:
             QMessageBox.information(self, "Login Failed", "Invalid username or password")
             return
 
     def update_tab_access(self):
         if GlobalState.current_role == "Customer":
-            self.signals.customer_logged_in.emit()      # Initiates the logged in customer(Loads all the tables and personal info)
-            self.signals.tab_state.emit(1, 2, 2)        # Disabled tab #1, enable tab #2, move to the tab #2
-            self.account_state_timer.start(60000)       # Start a timer that checks every 60s if the user wasn't banned/deleted
+            self.signals.customer_logged_in.emit()  # Initiate the logged in customer(Loads all the tables and personal info)
+            self.signals.tab_state.emit(1, 2, 2)    # Disable tab #1, enable tab #2, move to the tab #2
+            self.account_state_timer.start(60000)   # Start a timer that checks every 60s if the user wasn't banned/deleted
         elif GlobalState.current_role == "Librarian":     
-            self.signals.librarian_logged_in.emit()
-            self.signals.tab_state.emit(2, 1, 1)        # Disabled tab #2, enable tab #1, move to the tab #1
+            self.signals.librarian_logged_in.emit() # Initiate the logged in librarian
+            self.signals.tab_state.emit(2, 1, 1)    # Disable tab #2, enable tab #1, move to the tab #1
 
     def check_account_state(self):
         user_id = GlobalState.current_user
@@ -142,21 +143,24 @@ class LoginSignupTab(QWidget):
                 QMessageBox.warning(self, "Account Banned", "Your account has been banned.")
             else:
                 QMessageBox.warning(self, "Account Deleted", "Your account has been deleted.")
+            # Log out a user if they are not found in the "users" collection
             self.logout()
 
     def logout(self):	
-        self.account_state_timer.stop()                 # Stop the timer
+        self.account_state_timer.stop() # Stop the timer
         GlobalState.current_user = None
         GlobalState.current_role = None
         self.signals.update_status.emit("Not logged in")
         self.signals.update_status_bar_widget.emit("")  # Clear the status bar's widgets after logging out
         self.signals.update_status_bar_widget_2.emit("")  
         self.statusBar.clearMessage()
-        self.signals.tab_state.emit(1, 0, 0)            # Disabled tab #1
-        self.signals.tab_state.emit(2, 0, 0)            # Disabled tab #2
+        self.signals.tab_state.emit(1, 0, 0)    # Disable tab #1
+        self.signals.tab_state.emit(2, 0, 0)    # Disable tab #2
 
     def register_user(self):
-        account_registered = create_account(self, self.username_signup.text(), self.password_signup.text(), self.first_name_signup.text(), self.last_name_signup.text(), self.ssn_signup.text(), self.address_signup.text(), "Customer", self.statusBar)
+        account_registered = create_account(self, self.username_signup.text(), self.password_signup.text(), self.first_name_signup.text(), 
+                                            self.last_name_signup.text(), self.ssn_signup.text(), self.address_signup.text(), "Customer", self.statusBar)
+        # Clear the forms if the account has been successfully registered
         if account_registered == True:
             self.username_signup.setText("")
             self.password_signup.setText("")

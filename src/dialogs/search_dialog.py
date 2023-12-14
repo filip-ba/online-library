@@ -10,6 +10,7 @@ class SearchDialog(QDialog):
     def __init__(self, role, label_1, label_2, label_3, label_4):
         super().__init__()
         self.role = role
+        # Display different labels for customer and librarian
         self.label_1 = label_1
         self.label_2 = label_2
         self.label_3 = label_3
@@ -61,7 +62,7 @@ class SearchDialog(QDialog):
         form_layout.setSpacing(10)
         layout.addLayout(form_layout)
         layout.addSpacerItem(QSpacerItem(10, 10))  
-        # Buttons
+        # Ok and Cancel buttons
         button_layout = QHBoxLayout()
         self.ok_button = QPushButton("Ok")
         self.cancel_button = QPushButton("Cancel")

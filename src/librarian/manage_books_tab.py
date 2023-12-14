@@ -7,7 +7,7 @@ import os
 from database_manager import DatabaseManager
 from dialogs.add_book_dialog import AddBookDialog
 from shared_functions import display_book_catalog
-from shared_functions import advanced_search
+from shared_functions import search_book_catalog
 from shared_functions import sort_book_catalog
 from dialogs.edit_book_dialog import EditBookDialog
 
@@ -31,7 +31,9 @@ class ManageBooksTab(QWidget):
         self.delete_book_button.clicked.connect(self.delete_selected_book)
 
     def init_librarian_tab(self):
+        # Load the book catalog table
         self.display_books() 
+        # Set the default value at the beginning, because the state(enabled/disabled) of these 2 buttons can change
         self.cancel_button.setEnabled(False)
         self.refresh_catalog_button.setEnabled(True)    
 
@@ -85,7 +87,7 @@ class ManageBooksTab(QWidget):
         display_book_catalog(self, self.catalog_table, cursor)
 
     def search_books(self):
-        advanced_search(self, self.signals, self.statusBar, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
+        search_book_catalog(self, self.signals, self.statusBar, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
 
     def sort_books(self):
         sort_book_catalog(self, self.signals, self.catalog_table, self.refresh_catalog_button, self.cancel_button)
@@ -93,8 +95,8 @@ class ManageBooksTab(QWidget):
     def cancel_search_or_sort(self):
         self.refresh_catalog_button.setEnabled(True)
         self.cancel_button.setEnabled(False) 
-        self.signals.update_status_bar_widget.emit("")
-        self.display_books()
+        self.signals.update_status_bar_widget.emit("")  # Clear the status bar widget
+        self.display_books()    # Load the entire "books" collection 
 
     def show_add_book_dialog(self):
         dialog = AddBookDialog()
@@ -119,7 +121,9 @@ class ManageBooksTab(QWidget):
                     QMessageBox.warning(self, "File Exists", "An image with the same name already exists. Please choose a different name.")
                     return
                 else:
+                    # Copy the image into a "book_covers" folder
                     shutil.copy(full_image_name, destination_path)
+                    # Call a function that adds a book to the "books" collection
                     self.add_new_book(title, author, pages, year, items, image_name)
 
     def add_new_book(self, title, author, pages, year, items, image_name):
@@ -134,6 +138,7 @@ class ManageBooksTab(QWidget):
         }
         books_collection.insert_one(new_book)
         self.statusBar.showMessage(f"You have added a book '{title}' by {author}.", 8000)
+        # Refresh the book catalog
         self.display_books()
 
     def show_edit_book_dialog(self):
@@ -147,6 +152,7 @@ class ManageBooksTab(QWidget):
             books_collection = self.database_manager.db["books"]
             query = {"title": current_title, "author": current_author}
             book_data = books_collection.find_one(query)
+            # Open the edit book dialog
             dialog = EditBookDialog(book_data)
             result = dialog.exec()
         else:
@@ -191,9 +197,8 @@ class ManageBooksTab(QWidget):
         }
         # Set the new values
         update_values = {"$set": new_data}
-        # Update the book with the new information
         books_collection.update_one(query, update_values)
-        # Optionally, refresh the book catalog display
+        # Refresh the book catalog
         self.display_books()
 
     def delete_selected_book(self):
@@ -213,25 +218,21 @@ class ManageBooksTab(QWidget):
                 return
             # Confirm deletion with the user
             reply = QMessageBox.question(
-                self,
-                "Delete Book",
-                f"Do you want to delete '{title}' by {author}?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.Cancel
-            )
+                self, "Delete Book", f"Do you want to delete '{title}' by {author}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel )
             if reply == QMessageBox.StandardButton.Yes:
                 self.delete_book(title, author)
 
     def delete_book(self, title, author):
-        # Delete the book from the 'books' collection
+        # Delete the book from the "books" collection
         books_collection = self.database_manager.db["books"]
         book_query = {"title": title, "author": author} 
         self.statusBar.showMessage(f"The book '{title}' by {author} has been deleted.", 8000)
         books_collection.delete_one(book_query)
+        # Refresh the book catalog
         self.display_books()
            
     def is_book_borrowed(self, book_id):
-        # Check if the book is in the borrowed_books collection
+        # Check if the book is in the "borrowed_books" collection
         borrowed_books_collection = self.database_manager.db["borrowed_books"]
         borrowed_book = borrowed_books_collection.find_one({"book_id": book_id})
         return borrowed_book is not None
