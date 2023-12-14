@@ -1,7 +1,10 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, QListWidget, QListWidgetItem, QScrollArea,  
-      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView, QAbstractItemView )
+      QHBoxLayout, QTableWidget, QTableWidgetItem, QLabel, QDialog, QGroupBox, QHeaderView, QAbstractItemView, QFileDialog )
 from PyQt6.QtCore import Qt
+from datetime import datetime
+from bson import ObjectId
+import json
 from database_manager import DatabaseManager
 from dialogs.registration_dialog import RegistrationDialog
 from dialogs.edit_profile_dialog import EditProfileDialog
@@ -43,6 +46,8 @@ class ManageCustomersTab(QWidget):
         self.show_history_button.clicked.connect(self.display_customer_history)
         self.assign_book_button.clicked.connect(self.assign_book)
         self.remove_book_button.clicked.connect(self.remove_book)
+        self.export_button.clicked.connect(self.export_collections)
+        self.import_button.clicked.connect(self.import_collections)
 
     def init_librarian_tab(self):
         # Load the tables and lists
@@ -724,6 +729,94 @@ class ManageCustomersTab(QWidget):
         self.signals.update_status_bar_widget_2.emit("")
         self.display_customers()
 
-        
 
 
+    def export_collections(self):
+        # Ask the user to choose a file location for the export
+        file_dialog = QFileDialog(self)
+        file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptSave)
+        file_dialog.setNameFilter("JSON files (*.json)")
+        file_dialog.setDefaultSuffix("json")
+        if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
+            file_path = file_dialog.selectedFiles()[0]
+            try:
+                # Export each collection to a JSON file
+                collections = ["users", "librarians", "inactivated_accounts", "edited_accounts", "customer_history", "borrowed_books", "books", "banned_accounts"]
+                export_data = {}
+                for collection_name in collections:
+                    collection_data = list(self.database_manager.db[collection_name].find())
+                    # Convert ObjectID to string with "$oid" format
+                    for item in collection_data:
+                        if '_id' in item:
+                            item['_id'] = {'$oid': str(item['_id'])}
+                        # Convert user_id and book_id to string with "$oid" format in specific collections
+                        if collection_name in ["customer_history"]:
+                            if 'user_id' in item:
+                                item['user_id'] = {'$oid': str(item['user_id'])}
+                            if 'book_id' in item:
+                                item['book_id'] = {'$oid': str(item['book_id'])}
+                        if collection_name in ["borrowed_books"]:
+                            if 'user_id' in item:
+                                item['user_id'] = {'$oid': str(item['user_id'])}
+                            if 'book_id' in item:
+                                item['book_id'] = {'$oid': str(item['book_id'])}
+                 
+                    export_data[collection_name] = collection_data
+
+                # Write the data to the selected file
+                with open(file_path, "w", encoding="utf-8") as export_file:
+                    json.dump(export_data, export_file, default=str, indent=2, ensure_ascii=False)
+
+                QMessageBox.information(self, "Export Successful", f"The collections have been exported to {file_path}")
+            except Exception as e:
+                QMessageBox.warning(self, "Export Failed", f"An error occurred during export:\n{str(e)}")
+
+
+
+
+    def import_collections(self):
+        file_dialog = QFileDialog(self)
+        file_dialog.setAcceptMode(QFileDialog.AcceptMode.AcceptOpen)
+        file_dialog.setNameFilter("JSON files (*.json)")
+        if file_dialog.exec() == QFileDialog.DialogCode.Accepted:
+            file_path = file_dialog.selectedFiles()[0]
+            try:
+                with open(file_path, "r", encoding="utf-8") as import_file:
+                    imported_data = json.load(import_file)
+                # Convert the $oid format back to ObjectId
+                for collection_name, collection_data in imported_data.items():
+                    # Skip empty collections
+                    if not collection_data:
+                        continue
+                    for item in collection_data:
+                        if '_id' in item:
+                            item['_id'] = ObjectId(item['_id']['$oid'])
+                        # Convert user_id and book_id fields in specific collections
+                        if collection_name in ["customer_history"]:
+                            if 'user_id' in item:
+                                item['user_id'] = ObjectId(item['user_id']['$oid'])
+                            if 'book_id' in item:
+                                item['book_id'] = ObjectId(item['book_id']['$oid'])
+                        if collection_name in ["borrowed_books"]:
+                            if 'user_id' in item:
+                                item['user_id'] = ObjectId(item['user_id']['$oid'])
+                            if 'book_id' in item:
+                                item['book_id'] = ObjectId(item['book_id']['$oid'])
+                            if 'borrow_date' in item:
+                                item['borrow_date'] = datetime.strptime(item, "%Y-%m-%d %H:%M:%S")
+                            if 'expiry_date' in item:
+                                item['expiry_date'] = datetime.strptime(item, "%Y-%m-%d %H:%M:%S")
+
+
+                    # Clear existing data in the collection
+                    self.database_manager.db[collection_name].delete_many({})
+                    # Insert the data into the respective collection
+                    self.database_manager.db[collection_name].insert_many(collection_data)
+                # Refresh all tables/lists
+                self.display_customers()
+                self.display_banned_accounts()
+                self.display_inactivated_accounts()
+                self.display_edited_accounts()
+                QMessageBox.information(self, "Import Successful", f"The collections have been imported from {file_path}")
+            except Exception as e:
+                QMessageBox.warning(self, "Import Failed", f"An error occurred during import:\n{str(e)}")

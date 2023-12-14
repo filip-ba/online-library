@@ -279,7 +279,7 @@ def borrow_book(self, catalog_table, user_id, database_manager, statusBar, role)
 def borrow_selected_book(user_id, book_id, selected_row, books_collection, borrowed_books_collection, history_collection, catalog_table, statusBar, message_6):
         # Insert a document into the "borrowed_books" collection
         borrow_date = datetime.utcnow()
-        expiry_date = borrow_date + timedelta(minutes=1) 
+        expiry_date = borrow_date + timedelta(days=6) 
         borrowed_book = {
             "user_id": user_id,
             "book_id": book_id,
