@@ -1,6 +1,6 @@
 from PyQt6.QtWidgets import (
       QWidget, QPushButton, QVBoxLayout, QTabWidget, QMessageBox, 
-      QHBoxLayout, QTableWidget, QDialog, QHeaderView )
+      QHBoxLayout, QTableWidget, QDialog, QHeaderView, QAbstractItemView )
 from pathlib import Path
 import shutil
 import os
@@ -57,6 +57,7 @@ class ManageBooksTab(QWidget):
         self.catalog_table = QTableWidget()
         self.catalog_table.setColumnCount(6) 
         self.catalog_table.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Items", "Book Cover"])
+        self.catalog_table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         header = self.catalog_table.horizontalHeader()
         header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         catalog_layout.addWidget(self.catalog_table)

@@ -10,6 +10,8 @@ from dialogs.search_dialog import SearchDialog
 from shared_functions import create_account
 from shared_functions import display_borrowed_books
 from shared_functions import display_book_history
+from shared_functions import display_book_catalog
+from shared_functions import borrow_book
 
 
 class ManageCustomersTab(QWidget):
@@ -39,6 +41,7 @@ class ManageCustomersTab(QWidget):
         self.sort_button.clicked.connect(self.sort_customers)
         self.search_button.clicked.connect(self.search_customers)
         self.cancel_button.clicked.connect(self.cancel_search_or_sort)
+        self.assign_book_button.clicked.connect(self.assign_book)
 
     def init_librarian_tab(self):
         self.display_customers()
@@ -85,7 +88,7 @@ class ManageCustomersTab(QWidget):
         group_box_3 = QGroupBox("Books Actions")
         books_actions_layout = QVBoxLayout(group_box_3)
         self.show_borrowed_button = QPushButton("Show Borrowed Books")
-        self.show_history_button = QPushButton("Show Customer History")
+        self.show_history_button = QPushButton("Show Borrowed Books History")
         self.assign_book_button = QPushButton("Assign a Book")
         books_actions_layout.addWidget(self.show_borrowed_button)
         books_actions_layout.addWidget(self.show_history_button)
@@ -212,7 +215,7 @@ class ManageCustomersTab(QWidget):
 
     def borrowed_books_dialog(self, user_id, account_username):
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"{account_username}'s borrowed books")
+        dialog.setWindowTitle(f"{account_username}'s Borrowed Books")
         dialog.setFixedSize(800, 700)
         layout = QVBoxLayout(dialog)
         table_widget = QTableWidget(dialog)
@@ -252,12 +255,7 @@ class ManageCustomersTab(QWidget):
         book_id = book_document["_id"]
         if book_id:
             reply = QMessageBox.question(
-                self,
-                "Return Book",
-                f"Do you want to return '{title}' by {author}?",
-                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel,
-                QMessageBox.StandardButton.Cancel
-            )
+                self, "Return Book", f"Do you want to return '{title}' by {author}?", QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel )
             if reply == QMessageBox.StandardButton.Yes:
                 borrowed_books_collection = self.database_manager.db["borrowed_books"]
                 delete_query = {"user_id": user_id, "book_id": book_id}
@@ -269,6 +267,51 @@ class ManageCustomersTab(QWidget):
                 self.statusBar.showMessage(f"The book '{title}' has been removed from the user '{account_username}'.", 8000)
         else:
             QMessageBox.warning(self, "Return Failed", f"Book not found in the database.")
+
+    def assign_book(self):
+        selected_row = self.customers_table.currentRow()
+        number_of_selected_rows = len(self.customers_table.selectionModel().selectedRows())
+        if number_of_selected_rows != 1:
+            return
+        account_username = self.customers_table.item(selected_row, 0).text()
+        user_collection = self.database_manager.db["users"]
+        query = {"username": account_username}
+        user_data = user_collection.find_one(query)
+        # If the user exists, open the dialog
+        if user_data:
+            user_id = user_data["_id"]
+            self.assign_book_dialog(user_id, account_username)
+        else:
+            QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
+
+    def assign_book_dialog(self, user_id, account_username):
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Assign a Book to '{account_username}'")
+        dialog.setFixedSize(800, 700)
+        layout = QVBoxLayout(dialog)
+        table_widget = QTableWidget(dialog)
+        table_widget.setColumnCount(7)
+        table_widget.setHorizontalHeaderLabels(["Title", "Author", "Pages", "Year", "Items", "Book Cover"])
+        table_widget.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        horizontal_header = table_widget.horizontalHeader()
+        horizontal_header.setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
+        # Populate the table with the user's borrowed books
+        display_book_catalog(self, table_widget)
+        # Buttons
+        button_layout = QHBoxLayout()
+        asign_button = QPushButton("Asign a Book", dialog)
+        asign_button.clicked.connect(lambda: self.asign_selected_book(table_widget, user_id))
+        cancel_button = QPushButton("Cancel", dialog)
+        cancel_button.clicked.connect(dialog.reject)
+        button_layout.addWidget(asign_button)
+        button_layout.addWidget(cancel_button)
+        # Add widgets to the layout
+        layout.addWidget(table_widget)
+        layout.addLayout(button_layout)
+        dialog.exec()
+
+    def asign_selected_book(self, table_widget, user_id):
+        borrow_book(self, table_widget, user_id, self.database_manager, self.statusBar, "Librarian")
 
     def display_customer_history(self):
         selected_row = self.customers_table.currentRow()
@@ -282,13 +325,13 @@ class ManageCustomersTab(QWidget):
         # If the user exists, open the dialog
         if user_data:
             user_id = user_data["_id"]
-            self.customer_history_dialog(user_id, account_username)
+            self.history_dialog(user_id, account_username)
         else:
             QMessageBox.warning(self, "Account Changes Failed", "User not found in the database.")
 
-    def customer_history_dialog(self, user_id, account_username):
+    def history_dialog(self, user_id, account_username):
         dialog = QDialog(self)
-        dialog.setWindowTitle(f"{account_username}'s history of borrowed books")
+        dialog.setWindowTitle(f"{account_username}'s History of Borrowed Books")
         dialog.setFixedSize(800, 700)
         layout = QVBoxLayout(dialog)
         table_widget = QTableWidget(dialog)
@@ -362,7 +405,8 @@ class ManageCustomersTab(QWidget):
             inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
             account_data = inactivated_accounts_collection.find_one({"_id": user_id})
             confirm_message = "Are you sure you want to accept this account request?"
-            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            confirm_result = QMessageBox.question(
+                self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No )
             if confirm_result == QMessageBox.StandardButton.Yes:
                 if account_data:
                     users_collection = self.database_manager.db["users"]
@@ -388,7 +432,8 @@ class ManageCustomersTab(QWidget):
         if selected_item:
             user_id = selected_item.data(Qt.ItemDataRole.UserRole)
             confirm_message = "Are you sure you want to decline this account request?"
-            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            confirm_result = QMessageBox.question(
+                self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No )
             if confirm_result == QMessageBox.StandardButton.Yes:
                 inactivated_accounts_collection = self.database_manager.db["inactivated_accounts"]
                 inactivated_accounts_collection.delete_one({"_id": user_id})
@@ -404,7 +449,8 @@ class ManageCustomersTab(QWidget):
             edited_accounts_collection = self.database_manager.db["edited_accounts"]
             account_data = edited_accounts_collection.find_one({"_id": user_id})
             confirm_message = "Are you sure you want to accept this change request?"
-            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            confirm_result = QMessageBox.question(
+                self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No )
             if confirm_result == QMessageBox.StandardButton.Yes:
                 if account_data:
                     users_collection = self.database_manager.db["users"]
@@ -436,7 +482,8 @@ class ManageCustomersTab(QWidget):
             does_user_exist = users_db.find_one({"_id": user_id})
             if does_user_exist:
                 confirm_message = "Are you sure you want to decline this account edit request?"
-                confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+                confirm_result = QMessageBox.question(
+                    self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No )
                 if confirm_result == QMessageBox.StandardButton.Yes:
                     edited_accounts_collection = self.database_manager.db["edited_accounts"]
                     edited_accounts_collection.delete_one({"_id": user_id})
@@ -537,7 +584,8 @@ class ManageCustomersTab(QWidget):
         # Check if the user exists in the database (hasn't been banned/deleted)
         if user_data:
             confirm_message = f"Are you sure you want to ban the account of '{user_data["username"]}'?"
-            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            confirm_result = QMessageBox.question(
+                self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No )
             if confirm_result == QMessageBox.StandardButton.Yes:
                 # Copy the user data to banned_accounts collection
                 banned_accounts_collection.insert_one(user_data)
@@ -563,7 +611,8 @@ class ManageCustomersTab(QWidget):
         # Check if the user exists in the database (hasn't been banned/deleted)
         if user_data:
             confirm_message = f"Are you sure you want to unban the account of '{user_data['username']}'?"
-            confirm_result = QMessageBox.question(self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            confirm_result = QMessageBox.question(
+                self, "Confirmation", confirm_message, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No )
             if confirm_result == QMessageBox.StandardButton.Yes:
                 # Copy the user data back to users collection
                 user_collection.insert_one(user_data)

@@ -2,7 +2,7 @@ from PyQt6.QtWidgets import (QMessageBox, QTableWidget, QTableWidgetItem,
                              QLabel, QDialog )
 from PyQt6.QtGui import QPixmap
 from PyQt6.QtCore import Qt
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 import bcrypt  
 import os
@@ -213,3 +213,118 @@ def sort_book_catalog(self, signals, catalog_table, refresh_catalog_button, canc
         cursor = books_collection.find().sort([(sort_attr, 1 if sort_ascend == True else -1)])
         signals.update_status_bar_widget.emit(f"Books sorted by {sort_attr}")
         display_book_catalog(self, catalog_table, cursor)
+
+def borrow_book(self, catalog_table, user_id, database_manager, statusBar, role):
+    # Get the selected row
+    selected_row = catalog_table.currentRow()
+    number_of_selected_rows = len(catalog_table.selectionModel().selectedRows())
+    if number_of_selected_rows == 1:
+        # Get book information from the selected row
+        title = catalog_table.item(selected_row, 0).text()
+        author = catalog_table.item(selected_row, 1).text()
+        # Find the user in the database
+        users_collection = database_manager.db["users"]
+        user_query = {"_id": user_id}
+        user_document = users_collection.find_one(user_query)
+        # Find the _id of the book based on title and author
+        books_collection = database_manager.db["books"]
+        book_query = {"title": title, "author": author}
+        book_document = books_collection.find_one(book_query)
+        # Borrowed books collection
+        borrowed_books_collection = database_manager.db["borrowed_books"]
+        # Set up messages based on the role
+        if role == "Customer":
+            message_1 = "Borrow Failed"
+            message_2 = "You have already borrowed the maximum allowed number of books (6)."
+            message_3 = f"You have already borrowed '{title}' by {author}."
+            message_4 = "Borrow a Book"
+            message_5 = f"Do you want to borrow '{title}' by {author}?"
+            message_6 = f"You have borrowed '{title}' by {author}."
+        else:
+            message_1 = "Book Asignment Failed"
+            message_2 = "This user has already borrowed the maximum allowed number of books (6)."
+            message_3 = f"This user already has a book '{title}' by {author} borrowed."
+            message_4 = "Asign a Book"
+            message_5 = f"Do you want to asign '{title}' by {author}?"
+            message_6 = f"You have asigned '{title}' by {author}."
+        if not user_document:
+            QMessageBox.warning(self, message_1, f"User not found in the database.")
+            return
+        if not book_document:
+            QMessageBox.warning(self, message_1, f"Book not found in the database.")
+            return
+        else:
+            book_id = book_document["_id"]
+        # Check if there are items available for borrowing
+        items = get_available_items(book_id, books_collection)
+        if items <= 0:
+            QMessageBox.warning(self, message_1, f"The book '{title}' by {author} is out of stock.")
+            return
+        # Check if the user has reached the maximum limit of borrowed books (6 books)
+        elif is_max_books_borrowed(user_id, borrowed_books_collection):
+            QMessageBox.warning(self, "Book Limit Exceeded", message_2)
+            return
+        # Check if the book is already in the user's borrowed_books
+        elif is_book_already_borrowed(user_id, book_id, borrowed_books_collection):
+            QMessageBox.warning(self, "Already Borrowed", message_3)
+            return
+        # Confirm borrowing with the user
+        else:
+            reply = QMessageBox.question(
+                self, message_4, message_5, QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.Cancel )
+            if reply == QMessageBox.StandardButton.Yes:
+                history_collection = database_manager.db["customer_history"]
+                borrow_selected_book(user_id, book_id, selected_row, books_collection, borrowed_books_collection, history_collection, catalog_table, statusBar, message_6)
+                return True
+    else:
+        return
+
+def borrow_selected_book(user_id, book_id, selected_row, books_collection, borrowed_books_collection, history_collection, catalog_table, statusBar, message_6):
+        # Insert a document into the 'borrowed_books' collection
+        borrow_date = datetime.utcnow()
+        expiry_date = borrow_date + timedelta(minutes=15) 
+        borrowed_book = {
+            "user_id": user_id,
+            "book_id": book_id,
+            "borrow_date": borrow_date,
+            "expiry_date": expiry_date
+        }
+        borrowed_books_collection.insert_one(borrowed_book)
+        # Update the 'items' field in the 'books' collection (decrement by 1)
+        update_query = {"$inc": {"items": -1}}
+        books_collection.update_one({"_id": book_id}, update_query)
+        # Update the 'items' column in the catalog_table for the selected row
+        updated_items = catalog_table.item(selected_row, 4).text()
+        updated_items = str(int(updated_items) - 1)  # Decrement by 1
+        catalog_table.setItem(selected_row, 4, QTableWidgetItem(updated_items))
+        statusBar.showMessage(message_6, 8000)
+        # Add the book to the user's history
+        add_to_user_history(user_id, book_id, borrow_date, history_collection)
+
+def get_available_items(book_id, books_collection):
+    book = books_collection.find_one({"_id": book_id})
+    if book:
+        return book.get("items", 0)  
+    else:
+        return 0  
+
+def is_max_books_borrowed(user_id, borrowed_books_collection):
+    borrowed_books_count = borrowed_books_collection.count_documents(
+        {"user_id": user_id}
+    )
+    return borrowed_books_count >= 6
+
+def is_book_already_borrowed(user_id, book_id, borrowed_books_collection):
+    existing_borrowed_book = borrowed_books_collection.find_one(
+        {"user_id": user_id, "book_id": book_id}
+    )
+    return existing_borrowed_book is not None
+
+def add_to_user_history(user_id, book_id, borrow_date, history_collection):
+    # Add the book information into the user's history
+    history_entry = {
+        "user_id": user_id,
+        "book_id": book_id,
+        "borrow_date": borrow_date,
+    }
+    history_collection.insert_one(history_entry)
