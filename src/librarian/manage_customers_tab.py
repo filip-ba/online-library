@@ -783,7 +783,8 @@ class ManageCustomersTab(QWidget):
             try:
                 with open(file_path, "r", encoding="utf-8") as import_file:
                     imported_data = json.load(import_file)
-                # Convert the $oid format back to ObjectId
+                    
+                # Convert the $oid format back to ObjectId and date format for specific fields
                 for collection_name, collection_data in imported_data.items():
                     # Skip empty collections
                     if not collection_data:
@@ -791,32 +792,30 @@ class ManageCustomersTab(QWidget):
                     for item in collection_data:
                         if '_id' in item:
                             item['_id'] = ObjectId(item['_id']['$oid'])
+                        
                         # Convert user_id and book_id fields in specific collections
-                        if collection_name in ["customer_history"]:
-                            if 'user_id' in item:
-                                item['user_id'] = ObjectId(item['user_id']['$oid'])
-                            if 'book_id' in item:
-                                item['book_id'] = ObjectId(item['book_id']['$oid'])
-                        if collection_name in ["borrowed_books"]:
+                        if collection_name in ["customer_history", "borrowed_books"]:
                             if 'user_id' in item:
                                 item['user_id'] = ObjectId(item['user_id']['$oid'])
                             if 'book_id' in item:
                                 item['book_id'] = ObjectId(item['book_id']['$oid'])
                             if 'borrow_date' in item:
-                                item['borrow_date'] = datetime.strptime(item, "%Y-%m-%d %H:%M:%S")
+                                item['borrow_date'] = datetime.strptime(item['borrow_date'], "%Y-%m-%d %H:%M:%S.%f")
                             if 'expiry_date' in item:
-                                item['expiry_date'] = datetime.strptime(item, "%Y-%m-%d %H:%M:%S")
-
-
+                                item['expiry_date'] = datetime.strptime(item['expiry_date'], "%Y-%m-%d %H:%M:%S.%f")
+                    
                     # Clear existing data in the collection
                     self.database_manager.db[collection_name].delete_many({})
+                    
                     # Insert the data into the respective collection
                     self.database_manager.db[collection_name].insert_many(collection_data)
+                
                 # Refresh all tables/lists
                 self.display_customers()
                 self.display_banned_accounts()
                 self.display_inactivated_accounts()
                 self.display_edited_accounts()
+                
                 QMessageBox.information(self, "Import Successful", f"The collections have been imported from {file_path}")
             except Exception as e:
                 QMessageBox.warning(self, "Import Failed", f"An error occurred during import:\n{str(e)}")
