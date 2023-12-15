@@ -26,6 +26,8 @@ class ManageCustomersTab(QWidget):
         self.create_tab_ui()
         # Singals
         self.signals.librarian_logged_in.connect(self.init_librarian_tab)
+        self.signals.export_signal.connect(self.export_collections)
+        self.signals.import_signal.connect(self.import_collections)
         # Connects
         self.refresh_button.clicked.connect(lambda: self.display_customers())
         self.refresh_button.clicked.connect(self.display_banned_accounts)
@@ -729,8 +731,6 @@ class ManageCustomersTab(QWidget):
         self.signals.update_status_bar_widget_2.emit("")
         self.display_customers()
 
-
-
     def export_collections(self):
         # Ask the user to choose a file location for the export
         file_dialog = QFileDialog(self)
@@ -760,19 +760,13 @@ class ManageCustomersTab(QWidget):
                                 item['user_id'] = {'$oid': str(item['user_id'])}
                             if 'book_id' in item:
                                 item['book_id'] = {'$oid': str(item['book_id'])}
-                 
                     export_data[collection_name] = collection_data
-
                 # Write the data to the selected file
                 with open(file_path, "w", encoding="utf-8") as export_file:
                     json.dump(export_data, export_file, default=str, indent=2, ensure_ascii=False)
-
                 QMessageBox.information(self, "Export Successful", f"The collections have been exported to {file_path}")
             except Exception as e:
                 QMessageBox.warning(self, "Export Failed", f"An error occurred during export:\n{str(e)}")
-
-
-
 
     def import_collections(self):
         file_dialog = QFileDialog(self)
@@ -783,7 +777,6 @@ class ManageCustomersTab(QWidget):
             try:
                 with open(file_path, "r", encoding="utf-8") as import_file:
                     imported_data = json.load(import_file)
-                    
                 # Convert the $oid format back to ObjectId and date format for specific fields
                 for collection_name, collection_data in imported_data.items():
                     # Skip empty collections
@@ -792,7 +785,6 @@ class ManageCustomersTab(QWidget):
                     for item in collection_data:
                         if '_id' in item:
                             item['_id'] = ObjectId(item['_id']['$oid'])
-                        
                         # Convert user_id and book_id fields in specific collections
                         if collection_name in ["customer_history", "borrowed_books"]:
                             if 'user_id' in item:
@@ -803,19 +795,15 @@ class ManageCustomersTab(QWidget):
                                 item['borrow_date'] = datetime.strptime(item['borrow_date'], "%Y-%m-%d %H:%M:%S.%f")
                             if 'expiry_date' in item:
                                 item['expiry_date'] = datetime.strptime(item['expiry_date'], "%Y-%m-%d %H:%M:%S.%f")
-                    
                     # Clear existing data in the collection
                     self.database_manager.db[collection_name].delete_many({})
-                    
                     # Insert the data into the respective collection
                     self.database_manager.db[collection_name].insert_many(collection_data)
-                
                 # Refresh all tables/lists
                 self.display_customers()
                 self.display_banned_accounts()
                 self.display_inactivated_accounts()
                 self.display_edited_accounts()
-                
                 QMessageBox.information(self, "Import Successful", f"The collections have been imported from {file_path}")
             except Exception as e:
                 QMessageBox.warning(self, "Import Failed", f"An error occurred during import:\n{str(e)}")

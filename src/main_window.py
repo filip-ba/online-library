@@ -5,6 +5,7 @@ from database_manager import DatabaseManager
 from librarian.librarian_tab import LibrarianTab
 from customer.customer_tab import CustomerTab
 from login_signup_tab import LoginSignupTab
+from global_state import GlobalState
 
 
 class MainWindow(QMainWindow):
@@ -19,7 +20,7 @@ class MainWindow(QMainWindow):
         self.signals.update_status_bar_widget_2.connect(self.update_status_bar_widget_2)
         self.signals.tab_state.connect(self.set_tab_state)
         self.signals.log_out.connect(self.login_signup_tab.logout)
-
+        
     def create_ui(self):
         self.setWindowTitle("Online Library Management System")
         self.setGeometry(50, 50, 1000, 800)
@@ -37,11 +38,11 @@ class MainWindow(QMainWindow):
         self.statusBar.addWidget(self.status_bar_widget_2)
         # Tab Widget for librarian, customer, and login/signup views
         self.tab_widget = QTabWidget(self)
-        librarian_tab = LibrarianTab(self.database_manager, self.statusBar, self.signals)
+        self.librarian_tab = LibrarianTab(self.database_manager, self.statusBar, self.signals)
         customer_tab = CustomerTab(self.database_manager, self.statusBar, self.signals)
         self.login_signup_tab = LoginSignupTab(self.database_manager, self.statusBar, self.signals)
         self.tab_widget.addTab(self.login_signup_tab, "Login/Sign up")
-        self.tab_widget.addTab(librarian_tab, "Librarian")
+        self.tab_widget.addTab(self.librarian_tab, "Librarian")
         self.tab_widget.addTab(customer_tab, "Customer")
         self.tab_widget.setTabEnabled(1, False)
         self.tab_widget.setTabEnabled(2, False)
@@ -49,16 +50,31 @@ class MainWindow(QMainWindow):
         # MenuBar
         menu_bar = self.menuBar()
         file_menu = menu_bar.addMenu("File")
-        edit_menu = menu_bar.addMenu("Edit")
-        view_menu = menu_bar.addMenu("View")
         user_menu = menu_bar.addMenu("User Menu")
-        # MenuBar actions
+        # Export and import actions
+        self.export_action = QAction("Export Collections", self)
+        self.import_action = QAction("Import Collections", self)
+        file_menu.addAction(self.export_action)
+        file_menu.addAction(self.import_action)
+        self.import_action.setDisabled(True)
+        self.export_action.triggered.connect(self.export_collections)
+        self.import_action.triggered.connect(self.import_collections)
+        self.export_action.setDisabled(True)
+        file_menu.addSeparator()
+        # Quit action
         self.quit_action = QAction("Quit", self)
         file_menu.addAction(self.quit_action)  
         self.quit_action.triggered.connect(self.close)
+        # Logout action
         self.logout_action = QAction("Logout", self)
         user_menu.addAction(self.logout_action) 
         self.logout_action.triggered.connect(self.login_signup_tab.logout)
+
+    def export_collections(self):
+        self.signals.export_signal.emit()
+
+    def import_collections(self):
+        self.signals.import_signal.emit()
         
     def closeEvent(self, event):
         event.accept()
@@ -71,6 +87,14 @@ class MainWindow(QMainWindow):
 
     def update_status_label(self, message):
         self.status_label.setText(message)
+        print(GlobalState.current_role)
+        # Disable the export and import action if the librarian isn't logged in
+        if GlobalState.current_role == "Customer" or GlobalState.current_role == None:
+            self.export_action.setDisabled(True)
+            self.import_action.setDisabled(True)
+        else:
+            self.export_action.setDisabled(False)
+            self.import_action.setDisabled(False)
 
     def update_tab_widget(self, tab_index):
         self.tab_widget.setCurrentIndex(tab_index)  
@@ -80,6 +104,7 @@ class MainWindow(QMainWindow):
         self.tab_widget.setTabEnabled(enable_tab, True)
         self.tab_widget.setCurrentIndex(set_tab)    
 
+
 class AppSignals(QObject):
     update_status = pyqtSignal(str)
     update_status_bar_widget = pyqtSignal(str)
@@ -88,3 +113,5 @@ class AppSignals(QObject):
     librarian_logged_in = pyqtSignal()
     tab_state = pyqtSignal(int, int, int)
     log_out = pyqtSignal()
+    export_signal = pyqtSignal()
+    import_signal = pyqtSignal()
