@@ -74,7 +74,7 @@ def display_book_catalog(self, catalog_table, cursor=None):
         # Display book cover image
         cover_label = QLabel()
         # Construct the absolute path to the book cover image
-        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}")
+        cover_path = os.path.join(Path(__file__).resolve().parent, "book_covers", f"{book['image_name']}")
         if os.path.exists(cover_path):
             pixmap = QPixmap(cover_path)
             scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
@@ -106,7 +106,7 @@ def display_borrowed_books(self, user_id, borrowed_books_table):
         for col, prop in enumerate(["title", "author", "pages", "year"]):
             borrowed_books_table.setItem(index, col, QTableWidgetItem(str(book[prop])))
         cover_label = QLabel()
-        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{book['image_name']}")
+        cover_path = os.path.join(Path(__file__).resolve().parent, "book_covers", f"{book['image_name']}")
         if os.path.exists(cover_path):
             pixmap = QPixmap(cover_path)
             scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)
@@ -145,7 +145,7 @@ def display_book_history(self, user_id, history_table):
         for col, prop in enumerate(["title", "author", "pages", "year"]):
             history_table.setItem(index, col, QTableWidgetItem(str(book.get(prop, ""))))
         cover_label = QLabel()
-        cover_path = os.path.join(Path(__file__).resolve().parent.parent, "book_covers", f"{image_name}")
+        cover_path = os.path.join(Path(__file__).resolve().parent, "book_covers", f"{image_name}")
         if os.path.exists(cover_path):
             pixmap = QPixmap(cover_path)
             scaled_pixmap = pixmap.scaled(100, 100, Qt.AspectRatioMode.KeepAspectRatio, Qt.TransformationMode.SmoothTransformation)

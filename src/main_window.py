@@ -1,6 +1,8 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QTabWidget
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import pyqtSignal, QObject
+import os
+import sys
 from database_manager import DatabaseManager
 from librarian.librarian_tab import LibrarianTab
 from customer.customer_tab import CustomerTab
@@ -23,7 +25,11 @@ class MainWindow(QMainWindow):
         
     def create_ui(self):
         # Set the application icon
-        self.setWindowIcon(QIcon("online_library_icon.ico"))
+        base_path = getattr(sys, '_MEIPASS', None)
+        icon_path = "icon.ico"
+        if base_path:
+            icon_path = os.path.join(base_path, icon_path)
+        self.setWindowIcon(QIcon(icon_path))
         self.setWindowTitle("Online Library Management System")
         self.setGeometry(50, 50, 1000, 800)
         # Create main widget and layout
@@ -89,7 +95,6 @@ class MainWindow(QMainWindow):
 
     def update_status_label(self, message):
         self.status_label.setText(message)
-        print(GlobalState.current_role)
         # Disable the export and import action if the librarian isn't logged in
         if GlobalState.current_role == "Customer" or GlobalState.current_role == None:
             self.export_action.setDisabled(True)
