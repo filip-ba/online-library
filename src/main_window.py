@@ -1,5 +1,5 @@
 from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QTabWidget
-from PyQt6.QtGui import QAction
+from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import pyqtSignal, QObject
 from database_manager import DatabaseManager
 from librarian.librarian_tab import LibrarianTab
@@ -22,6 +22,8 @@ class MainWindow(QMainWindow):
         self.signals.log_out.connect(self.login_signup_tab.logout)
         
     def create_ui(self):
+        # Set the application icon
+        self.setWindowIcon(QIcon("online_library_icon.ico"))
         self.setWindowTitle("Online Library Management System")
         self.setGeometry(50, 50, 1000, 800)
         # Create main widget and layout
