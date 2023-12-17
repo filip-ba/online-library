@@ -115,7 +115,7 @@ class ManageBooksTab(QWidget):
                 QMessageBox.warning(self, "Incomplete Information", "All fields must be filled in.")
                 return
             else:
-                destination_folder = Path(__file__).resolve().parent.parent.parent / "book_covers"
+                destination_folder = Path(__file__).resolve().parent.parent / "book_covers"
                 destination_path = str(destination_folder / os.path.basename(full_image_name))
                 if os.path.exists(destination_path):
                     QMessageBox.warning(self, "File Exists", "An image with the same name already exists. Please choose a different name.")

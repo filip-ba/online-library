@@ -2,7 +2,6 @@ from PyQt6.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QLabel, QTabWidge
 from PyQt6.QtGui import QAction, QIcon
 from PyQt6.QtCore import pyqtSignal, QObject
 import os
-import sys
 from database_manager import DatabaseManager
 from librarian.librarian_tab import LibrarianTab
 from customer.customer_tab import CustomerTab
@@ -25,10 +24,8 @@ class MainWindow(QMainWindow):
         
     def create_ui(self):
         # Set the application icon
-        base_path = getattr(sys, '_MEIPASS', None)
-        icon_path = "icon.ico"
-        if base_path:
-            icon_path = os.path.join(base_path, icon_path)
+        script_path = os.path.abspath(__file__)
+        icon_path = os.path.join(os.path.dirname(script_path), "icon.ico")
         self.setWindowIcon(QIcon(icon_path))
         self.setWindowTitle("Online Library Management System")
         self.setGeometry(50, 50, 1000, 800)
