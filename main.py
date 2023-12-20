@@ -3,7 +3,7 @@ from main_window import MainWindow
 from database_manager import DatabaseManager
 
 def main():
-    connection_string = "mongodb+srv://admin:admin@cluster0.p8pwbsz.mongodb.net/?retryWrites=true&w=majority"
+    connection_string = ""    # Replace this with your connection string
     database_name = "OnlineLibrary"
     database_manager = DatabaseManager(connection_string, database_name)
     app = QApplication([])
