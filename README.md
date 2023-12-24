@@ -37,12 +37,12 @@ This application was created as a final project for the Advanced Database System
 ## Screenshots
 
 <div style="display: flex; justify-content: space-between;">
-  <img src="screenshots/screenshot1.png" width="450">
-  <img src="screenshots/screenshot2.png" width="450">
+  <img src="screenshots/screenshot1.png" width="750">
+  <img src="screenshots/screenshot2.png" width="750">
 </div>
 <div style="display: flex; justify-content: space-between;">
-  <img src="screenshots/screenshot3.png" width="450">
-  <img src="screenshots/screenshot4.png" width="450">
+  <img src="screenshots/screenshot3.png" width="750">
+  <img src="screenshots/screenshot4.png" width="750">
 </div>
 
 ## Installation
