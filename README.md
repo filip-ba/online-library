@@ -44,19 +44,3 @@ This application was created as a final project for the Advanced Database System
   <img src="screenshots/screenshot3.png" width="750">
   <img src="screenshots/screenshot4.png" width="750">
 </div>
-
-## Installation
-
-### Prerequisites
-
-- Python (version 3.12)
-- PyQt (version 6)
-- MongoDB 
-
-### How to Install
-#### To try this application you need to create your own database and collections.
-
-1. Create a MongoDB database called "OnlineLibrary". You can either use MongoDB locally or MongoDB Atlas.
-2. Create the following collections(don't change the names!): "books", "users", "librarians", "borrowed_books", "customer_history", "inactivated_accounts", "edited_accounts", "banned_accounts"
-3. Replace the "connection_string" in the main.py.
-4. Run the application: `python main.py`
