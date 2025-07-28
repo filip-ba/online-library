@@ -39,13 +39,11 @@ This application was created as a final project for the Advanced Database System
 *The login/registration screen allows you to log in or register as a customer or as an administrator (librarian).*
 ![Login/Sign up Tab](screenshots/screenshot1.png)
 
-## Screenshots
+*The customer screen.*
+![Login/Sign up Tab](screenshots/screenshot2.png)
 
-<div style="display: flex; justify-content: space-between;">
-  <img src="screenshots/screenshot1.png" width="750">
-  <img src="screenshots/screenshot2.png" width="750">
-</div>
-<div style="display: flex; justify-content: space-between;">
-  <img src="screenshots/screenshot3.png" width="750">
-  <img src="screenshots/screenshot4.png" width="750">
-</div>
+*The librarian screen.*
+![Login/Sign up Tab](screenshots/screenshot3.png)
+
+*The librarian screen.*
+![Login/Sign up Tab](screenshots/screenshot4.png)
