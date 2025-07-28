@@ -34,6 +34,11 @@ This application was created as a final project for the Advanced Database System
   - Edit account details.
   - Keep a record of borrowed books history and currently borrowed books, including borrow dates and expiry dates.
 
+## Screenshots 📸 
+
+*The login/registration screen allows you to log in or register as a customer or as an administrator (librarian).*
+![Login/Sign up Tab](.screenshots/screenshot1.png)
+
 ## Screenshots
 
 <div style="display: flex; justify-content: space-between;">
